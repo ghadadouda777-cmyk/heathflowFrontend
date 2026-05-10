@@ -1,0 +1,126 @@
+<div class="page-bg">
+  <div class="card">
+
+    <div class="logo-row">
+      <div class="logo-box">
+        <svg viewBox="0 0 24 24" fill="white" width="16" height="16">
+          <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5h2v5zm0-7h-2V7h2v2z"/>
+        </svg>
+      </div>
+      <span class="logo-name">HealthFlow</span>
+    </div>
+
+    <div class="step-bar">
+      <div class="step done">
+        <div class="step-num">
+          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="white" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>Account
+      </div>
+      <div class="step-sep"></div>
+      <div class="step active"><div class="step-num">2</div>Profile</div>
+      <div class="step-sep"></div>
+      <div class="step"><div class="step-num">3</div>Done</div>
+    </div>
+
+    <p class="form-title">Join HealthFlow</p>
+    <p class="form-sub">Create your account and start your wellness journey</p>
+
+    <!-- Error message -->
+    <div *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</div>
+
+    <form (ngSubmit)="register()">
+
+      <p class="sec-label">Personal info</p>
+      <div class="grid2">
+        <div class="field">
+          <label>First name</label>
+          <input type="text" [(ngModel)]="formData.prenom" name="prenom" placeholder="First name" required>
+        </div>
+        <div class="field">
+          <label>Last name</label>
+          <input type="text" [(ngModel)]="formData.nom" name="nom" placeholder="Last name" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" [(ngModel)]="formData.email" name="email" placeholder="bloomer@example.com" required>
+      </div>
+
+      <p class="sec-label">Body & goals</p>
+      <div class="grid2">
+        <div class="field">
+          <label>Age</label>
+          <input type="number" [(ngModel)]="formData.age" name="age" placeholder="25">
+        </div>
+        <div class="field">
+          <label>Height (cm)</label>
+          <input type="number" [(ngModel)]="formData.height" name="height" placeholder="170">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Weight (kg)</label>
+          <input type="number" [(ngModel)]="formData.weight" name="weight" placeholder="65">
+        </div>
+        <div class="field">
+          <label>Your goal</label>
+          <select [(ngModel)]="formData.goal" name="goal">
+            <option value="">Select your goal</option>
+            <option value="WEIGHT_LOSS">Weight Loss</option>
+            <option value="MUSCLE_GAIN">Muscle Gain</option>
+            <option value="MAINTAIN">Maintain Weight</option>
+            <option value="FITNESS">Improve Fitness</option>
+            <option value="HEALTHY_EATING">Healthy Eating Habits</option>
+            <option value="ENERGY">Increase Energy</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Lifestyle level</label>
+        <select [(ngModel)]="formData.lifestyleLevel" name="lifestyleLevel">
+          <option value="">Select your level</option>
+          <option value="DEBUTANT">Débutant</option>
+          <option value="INTERMEDIAIRE">Intermédiaire</option>
+          <option value="DISCIPLINE">Discipliné</option>
+          <option value="AVANCE">Avancé</option>
+          <option value="EXPERT">Expert</option>
+        </select>
+      </div>
+
+      <p class="sec-label">Security</p>
+      <div class="grid2">
+        <div class="field">
+          <label>Password</label>
+          <input type="password" [(ngModel)]="formData.pwd" name="pwd" placeholder="••••••••" required>
+        </div>
+        <div class="field">
+          <label>Confirm password</label>
+          <input type="password" [(ngModel)]="confirmPwd" name="confirmPwd" placeholder="••••••••">
+        </div>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" [(ngModel)]="agreed" name="agreed" id="terms-b">
+        <label for="terms-b">
+          I agree to the <span class="link">Terms and Conditions</span> and <span class="link">Privacy Policy</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn-submit" [disabled]="!agreed || loading">
+        {{ loading ? 'Creating account...' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="login-line">
+      Already have an account?
+      <span class="link" [routerLink]="['/authentification','bloomer']">Log in</span>
+    </p>
+
+  </div>
+</div>

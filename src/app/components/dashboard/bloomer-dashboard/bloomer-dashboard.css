@@ -1,0 +1,445 @@
+/* ===========================
+   GENERAL
+=========================== */
+:host {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f0ff;
+  padding: 1.5rem;
+  color: #1a1a2e;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===========================
+   MOTIVATION BANNER
+=========================== */
+.motivation-banner {
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  color: white;
+  text-align: center;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===========================
+   HEADER
+=========================== */
+.header {
+  background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+  padding: 1.5rem 2rem;
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+}
+.header h1 {
+  color: white;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.header p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+/* ===========================
+   GRILLES
+=========================== */
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ===========================
+   CARTE GENERIQUE
+=========================== */
+.card {
+  background: #ffffff;
+  border: 1px solid #e8e0f5;
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+}
+
+/* ===========================
+   CARTES STATS
+=========================== */
+.stat-icon {
+  font-size: 20px;
+  margin-bottom: 8px;
+  display: block;
+}
+.stat-val {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.stat-label {
+  font-size: 12px;
+  color: #888;
+  margin: 2px 0 8px;
+}
+.progress-bar {
+  height: 5px;
+  background: #ede9fe;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* ===========================
+   SECTION TITLE
+=========================== */
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===========================
+   JOURNAL ALIMENTAIRE
+=========================== */
+.meal-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 80px 80px 30px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0eafa;
+  font-size: 13px;
+}
+.meal-row:last-child { border-bottom: none; }
+
+.meal-header span {
+  color: #888;
+  font-size: 11px;
+  font-weight: 600;
+}
+.meal-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.meal-info      { font-size: 13px; color: #555; }
+.meal-info.prot { color: #7c3aed; }
+
+.empty-msg {
+  font-size: 13px;
+  color: #aaa;
+  padding: 12px 0;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.badge-dej   { background: #E6F1FB; color: #0C447C; }
+.badge-din   { background: #EEEDFE; color: #3C3489; }
+.badge-petit { background: #EAF3DE; color: #27500A; }
+.badge-col   { background: #FAEEDA; color: #633806; }
+
+/* ===========================
+   FORMULAIRE REPAS
+=========================== */
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 70px 70px 70px 90px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100%;
+  background: #fff;
+  color: #1a1a2e;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+  border-color: #7c3aed;
+}
+
+.btn-add {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.btn-add:hover { background: #6d28d9; }
+
+.btn-del {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+.btn-del:hover { color: #E24B4A; }
+
+/* ===========================
+   RESUME NUTRITIONNEL
+=========================== */
+.nutrition-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.nutr-card {
+  background: #f5f0ff;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.nutr-val      { font-size: 20px; font-weight: 700; }
+.nutr-val.cal  { color: #D85A30; }
+.nutr-val.prot { color: #7c3aed; }
+.nutr-label    { font-size: 11px; color: #888; margin-top: 2px; }
+.nutr-rest     { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+/* ===========================
+   SLIDERS HABITUDES
+=========================== */
+.slider-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.slider-item label {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 6px;
+  display: block;
+}
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: #7c3aed;
+  cursor: pointer;
+}
+.slider-val {
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 30px;
+  color: #7c3aed;
+}
+.slider-val.pink { color: #db2777; }
+
+/* ===========================
+   ACTIONS RAPIDES
+=========================== */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 0.5rem;
+}
+
+.action-btn {
+  border-radius: 14px;
+  padding: 1.2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+.action-btn:hover { opacity: 0.85; }
+.action-btn span  { display: block; font-size: 22px; margin-bottom: 6px; }
+
+.action-btn.water    { background: linear-gradient(135deg, #378ADD, #185FA5); }
+.action-btn.exercice { background: linear-gradient(135deg, #D85A30, #993C1D); }
+
+/* ===========================
+   SLEEP GROUP
+=========================== */
+.sleep-group {
+  background: linear-gradient(135deg, #db2777, #7c3aed);
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.sleep-group label {
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sleep-group-controls {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.sleep-group-controls input {
+  flex: 1;
+  border-radius: 8px;
+  border: none;
+  padding: 6px 10px;
+  font-size: 14px;
+  text-align: center;
+}
+.sleep-group-controls button {
+  background: white;
+  color: #7c3aed;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sleep-group-controls button:hover { opacity: 0.85; }
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 1024px) {
+  .grid-4       { grid-template-columns: repeat(2, 1fr); }
+  .grid-2       { grid-template-columns: 1fr; }
+  .input-row    { grid-template-columns: 1fr 1fr 1fr; }
+  .slider-group { grid-template-columns: 1fr; }
+  .action-grid  { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .grid-4   { grid-template-columns: 1fr 1fr; }
+  .meal-row { grid-template-columns: 1fr 60px 70px 30px; }
+}
+/* ===========================
+   HEADER EXTRAS
+=========================== */
+.header {
+  position: relative;
+}
+
+.header-subtitle {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  margin-top: 6px;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  transition: color 0.2s;
+  display: inline-block;
+}
+.header-subtitle:hover {
+  color: white;
+}
+
+.btn-logout {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  backdrop-filter: blur(4px);
+}
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+
+.footer-cta {
+  margin-top: 2rem;
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  border-radius: 16px;
+  padding: 1.2rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.footer-cta button {
+  background: white;
+  color: #7c3aed;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.footer-cta button:hover {
+  opacity: 0.85;
+}

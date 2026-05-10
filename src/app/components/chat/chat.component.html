@@ -1,0 +1,176 @@
+<div class="chat-shell">
+
+  <!-- ══ LEFT PANEL — conversation list ══ -->
+  <aside class="chat-sidebar">
+    <div class="chat-sidebar-header">
+      <span class="chat-title">💬 {{ role === 'patient' ? 'Mes messages' : 'Conversations' }}</span>
+      <button class="chat-new-btn" (click)="openNewConvModal()" title="Nouvelle conversation">+</button>
+    </div>
+
+    <div class="chat-search-wrap">
+      <input class="chat-search" type="text" placeholder="Rechercher…" [(ngModel)]="searchQuery" />
+    </div>
+
+    @if (wsStatus === 'disconnected') {
+      <div class="chat-status-bar error">⚠ Connexion perdue — reconnexion…</div>
+    }
+    @if (wsStatus === 'connecting') {
+      <div class="chat-status-bar info">⏳ Connexion…</div>
+    }
+
+    <div class="chat-conv-list">
+      @for (conv of filteredConversations; track conv.id) {
+        <div
+          class="chat-conv-item"
+          [class.active]="selectedConv?.id === conv.id"
+          (click)="selectConversation(conv)">
+          <div class="chat-conv-avatar" [class]="avatarClass(conv.id)">
+            {{ getOtherName(conv).charAt(0).toUpperCase() }}
+          </div>
+          <div class="chat-conv-body">
+            <div class="chat-conv-top">
+              <span class="chat-conv-name">{{ getOtherName(conv) }}</span>
+              <span class="chat-conv-time">{{ formatTime(conv.lastMessageAt) }}</span>
+            </div>
+            <div class="chat-conv-bottom">
+              <span class="chat-conv-preview">{{ conv.lastMessage || 'Aucun message' }}</span>
+              @if (conv.unreadCount > 0) {
+                <span class="chat-unread-badge">{{ conv.unreadCount }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+      @if (filteredConversations.length === 0 && !loadingConvs) {
+        <div class="chat-empty-list">
+          <p>Aucune conversation</p>
+          <button class="chat-start-btn" (click)="openNewConvModal()">+ Démarrer</button>
+        </div>
+      }
+      @if (loadingConvs) {
+        <div class="chat-loading">Chargement…</div>
+      }
+    </div>
+  </aside>
+
+  <!-- ══ RIGHT PANEL — message thread ══ -->
+  <section class="chat-thread">
+
+    @if (!selectedConv) {
+      <div class="chat-thread-empty">
+        <div class="chat-thread-empty-icon">💬</div>
+        <h3>{{ role === 'patient' ? 'Sélectionnez une conversation' : 'Select a conversation' }}</h3>
+        <p>{{ role === 'patient' ? 'Choisissez à gauche ou démarrez une nouvelle.' : 'Choose from the left or start a new one.' }}</p>
+        <button class="chat-start-btn" (click)="openNewConvModal()">
+          {{ role === 'patient' ? '+ Nouvelle conversation' : '+ New conversation' }}
+        </button>
+      </div>
+    } @else {
+
+      <!-- Thread header -->
+      <div class="chat-thread-header">
+        <div class="chat-thread-user">
+          <div class="chat-thread-avatar" [class]="avatarClass(selectedConv.id)">
+            {{ getOtherName(selectedConv).charAt(0).toUpperCase() }}
+          </div>
+          <div>
+            <span class="chat-thread-name">{{ getOtherName(selectedConv) }}</span>
+            <span class="chat-thread-status" [class.online]="wsStatus === 'connected'">
+              {{ wsStatus === 'connected' ? '● En ligne' : '○ Hors ligne' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div class="chat-messages" #messagesEl>
+        @if (loadingMessages) {
+          <div class="chat-messages-loading">Chargement…</div>
+        }
+        @for (msg of messages; track msg.id) {
+          <div class="chat-msg-row" [class.mine]="isMine(msg)" [class.theirs]="!isMine(msg)">
+            @if (!isMine(msg)) {
+              <div class="chat-msg-avatar" [class]="avatarClass(selectedConv.id)">
+                {{ getOtherName(selectedConv).charAt(0).toUpperCase() }}
+              </div>
+            }
+            <div class="chat-msg-wrap">
+              <div class="chat-bubble" [class.mine]="isMine(msg)" [class.theirs]="!isMine(msg)">
+                {{ msg.content }}
+              </div>
+              <div class="chat-msg-meta" [class.right]="isMine(msg)">
+                <span>{{ msg.sentAt | date:'HH:mm' }}</span>
+                @if (isMine(msg)) {
+                  <span class="chat-read-tick">{{ msg.isRead ? '✓✓' : '✓' }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        }
+        @if (messages.length === 0 && !loadingMessages) {
+          <div class="chat-no-messages">
+            {{ role === 'patient' ? 'Aucun message. Commencez la conversation !' : 'No messages yet. Start the conversation!' }}
+          </div>
+        }
+      </div>
+
+      <!-- Input bar -->
+      <div class="chat-input-bar">
+        <textarea
+          class="chat-input"
+          [placeholder]="role === 'patient' ? 'Écrire un message…' : 'Write a message…'"
+          [(ngModel)]="newMessage"
+          (keydown.enter)="onEnter($any($event))"
+          rows="1"
+        ></textarea>
+        <button
+          class="chat-send-btn"
+          [disabled]="!newMessage.trim() || sending"
+          (click)="sendMessage()">
+          @if (sending) { ⏳ } @else { ➤ }
+        </button>
+      </div>
+
+    }
+  </section>
+
+</div>
+
+<!-- ══ MODAL — New conversation ══ -->
+@if (showNewConvModal) {
+  <div class="chat-modal-overlay" (click)="closeNewConvModal()">
+    <div class="chat-modal" (click)="$event.stopPropagation()">
+      <div class="chat-modal-header">
+        <h3>{{ role === 'patient' ? 'Nouvelle conversation' : 'New conversation' }}</h3>
+        <button class="chat-modal-close" (click)="closeNewConvModal()">✕</button>
+      </div>
+      <div class="chat-modal-body">
+        @if (newConvError) {
+          <div class="chat-alert-error">⚠ {{ newConvError }}</div>
+        }
+        <div class="chat-form-group">
+          <label>{{ role === 'patient' ? 'Praticien' : 'Client / Patient' }}</label>
+          @if (patients && patients.length > 0) {
+            <select [(ngModel)]="newConvTargetId" class="chat-select">
+              <option [ngValue]="null" disabled>— Sélectionner —</option>
+              @for (p of patients; track p.id) {
+                <option [ngValue]="p.id">{{ p.nom }}</option>
+              }
+            </select>
+          } @else {
+            <p class="chat-hint">Aucun contact disponible</p>
+          }
+        </div>
+      </div>
+      <div class="chat-modal-footer">
+        <button class="chat-btn-cancel" (click)="closeNewConvModal()">Annuler</button>
+        <button
+          class="chat-btn-create"
+          [disabled]="creatingConv || !newConvTargetId"
+          (click)="createConversation()">
+          {{ creatingConv ? 'Création…' : 'Créer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

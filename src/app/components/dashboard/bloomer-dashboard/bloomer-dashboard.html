@@ -1,0 +1,207 @@
+
+<div class="motivation-banner" *ngIf="motivationMsg">
+  {{ motivationMsg }}
+</div>
+
+
+<div class="header">
+  <h1>Mon Dashboard 🌸</h1>
+  <p>Bienvenue dans votre espace personnel HealthFlow</p>
+
+  <button class="btn-logout" routerLink="/authentification/bloomer">
+    Log Out
+  </button>
+</div>
+
+<div class="grid-4">
+
+  <div class="card">
+    <span class="stat-icon">💧</span>
+    <div class="stat-val">{{ water }}/{{ goalWater }}</div>
+    <div class="stat-label">Coupes d'eau</div>
+    <div class="progress-bar">
+      <div class="progress-fill"
+           [style.width.%]="getPercent(water, goalWater)"
+           style="background:#378ADD;">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="stat-icon">😴</span>
+    <div class="stat-val">{{ sleep }}h/{{ goalSleep }}h</div>
+    <div class="stat-label">Sommeil</div>
+    <div class="progress-bar">
+      <div class="progress-fill"
+           [style.width.%]="getPercent(sleep, goalSleep)"
+           style="background:#7c3aed;">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="stat-icon">💪</span>
+    <div class="stat-val">{{ exo }}/{{ goalExo }}</div>
+    <div class="stat-label">Exercices/semaine</div>
+    <div class="progress-bar">
+      <div class="progress-fill"
+           [style.width.%]="getPercent(exo, goalExo)"
+           style="background:#db2777;">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="stat-icon">🔥</span>
+   <div class="stat-val">{{ calSuivi }}/{{ goalCal }}</div>
+    <div class="stat-label">Calories</div>
+    <div class="progress-bar">
+      <div class="progress-fill"
+          [style.width.%]="getPercent(calSuivi, goalCal)"
+           style="background:#D85A30;">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<div class="grid-2">
+
+  <div class="card">
+    <div class="section-title">📋 Journal Alimentaire</div>
+
+    <div class="meal-row meal-header">
+      <span>Plat</span>
+      <span>Quantité</span>
+      <span>Cal/100g</span>
+      <span>Prot/100g</span>
+      <span></span>
+    </div>
+
+    <div *ngIf="meals.length === 0" class="empty-msg">
+      Aucun repas enregistré aujourd'hui.
+    </div>
+
+    <div class="meal-row" *ngFor="let meal of meals; let i = index">
+      <span class="meal-name">
+        {{ meal.name }}
+        <span class="badge" [ngClass]="getBadgeClass(meal.type)">
+          {{ getTypeLabel(meal.type) }}
+        </span>
+      </span>
+      <span class="meal-info">{{ meal.quantite }}g</span>
+      <span class="meal-info">{{ calcCal(meal) }} kcal</span>
+      <span class="meal-info prot">{{ calcProt(meal) }}g</span>
+      <button class="btn-del" (click)="removeMeal(i)">×</button>
+    </div>
+
+    <div class="input-row">
+      <input type="text"   placeholder="Nom du plat"  [(ngModel)]="newMeal.name" />
+      <select [(ngModel)]="newMeal.type">
+        <option value="petit-dej">Petit-dej</option>
+        <option value="dejeuner">Déjeuner</option>
+        <option value="diner">Dîner</option>
+        <option value="collation">Collation</option>
+      </select>
+      <input type="number" placeholder="qté (g)"   min="1"     [(ngModel)]="newMeal.quantite" />
+      <input type="number" placeholder="cal/100g"  min="1"     [(ngModel)]="newMeal.cal100" />
+      <input type="number" placeholder="prot/100g" min="0" step="0.1" [(ngModel)]="newMeal.prot100" />
+      <button class="btn-add" (click)="addMeal()">+ Ajouter</button>
+    </div>
+
+    <div class="nutrition-summary">
+      <div class="nutr-card">
+        <div class="nutr-val cal">{{ calSuivi }} kcal</div>
+        <div class="nutr-label">Calories consommées</div>
+        <div class="nutr-rest">
+          Reste: {{ (goalCal - calSuivi) > 0 ? (goalCal - calSuivi) : 0 }} kcal
+        </div>
+      </div>
+      <div class="nutr-card">
+        <div class="nutr-val prot">{{ protSuivi }}g</div>
+        <div class="nutr-label">Protéines consommées</div>
+        <div class="nutr-rest">
+          Reste: {{ (goalProt - protSuivi) > 0 ? (goalProt - protSuivi) : 0 }}g
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="right-col">
+
+    <div class="card">
+      <div class="section-title">🎯 Mes Habitudes de Vie</div>
+      <div class="slider-group">
+
+        <div class="slider-item">
+          <label>💧 Coupes d'eau / jour</label>
+          <div class="slider-row">
+            <input type="range" min="1" max="15" step="1"
+                   [(ngModel)]="goalWater" (change)="updateGoalWater()" />
+            <span class="slider-val">{{ goalWater }}</span>
+          </div>
+        </div>
+
+        <div class="slider-item">
+          <label>😴 Heures de sommeil</label>
+          <div class="slider-row">
+            <input type="range" min="4" max="12" step="1"
+                   [(ngModel)]="goalSleep" (change)="updateGoalSleep()" />
+            <span class="slider-val">{{ goalSleep }}h</span>
+          </div>
+        </div>
+
+        <div class="slider-item">
+          <label>💪 Exercices / semaine</label>
+          <div class="slider-row">
+            <input type="range" min="1" max="7" step="1"
+                   [(ngModel)]="goalExo" (change)="updateGoalExo()" />
+            <span class="slider-val pink">{{ goalExo }}</span>
+          </div>
+        </div>
+
+      </div>
+      <div class="slider-item">
+  <label>🔥 Calories / jour</label>
+  <div class="slider-row">
+    <input type="range" min="1000" max="4000" step="50"
+           [(ngModel)]="goalCal" (change)="updateGoalCal()" />
+    <span class="slider-val">{{ goalCal }}</span>
+  </div>
+</div>
+
+
+    </div>
+
+    <div class="card">
+      <div class="section-title">⚡ Actions Rapides</div>
+      <div class="action-grid">
+
+        <button class="action-btn water" (click)="addWater()">
+          <span>💧</span>Ajouter une coupe d'eau
+        </button>
+
+        <button class="action-btn exercice" (click)="addExercice()">
+          <span>💪</span>Marquer un exercice
+        </button>
+
+        <div class="sleep-group">
+          <label><span>😴</span> Heures de sommeil</label>
+          <div class="sleep-group-controls">
+            <input type="number" step="0.5" min="0" max="24"
+                   [(ngModel)]="sleepInput" placeholder="Ex: 7" />
+            <button (click)="logSleep()">OK</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="footer-cta">
+  <span>💬 Voulez-vous un nutritionniste et/ou coach personnel ?</span>
+  <button routerLink="/abonnement">Découvrir 😊</button>
+</div>

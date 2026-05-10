@@ -1,0 +1,1077 @@
+<div class="dashboard-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon">HF</span>
+      <div>
+        <h1>HealthFlow</h1>
+        <p>Coach Space</p>
+      </div>
+    </div>
+
+    <nav class="menu">
+      @for (item of sidebarItems; track item.label) {
+        <button class="menu-item" [class.active]="activeTab === item.label" (click)="setActiveTab(item.label)">
+          <span class="menu-icon">{{ item.icon }}</span>
+          <span class="menu-label">{{ item.label }}</span>
+          @if (item.label === 'Dashboard' && pendingRdvCount > 0) {
+            <span class="menu-badge">{{ pendingRdvCount }}</span>
+          } @else if (item.label === 'Conversations' && confirmedClients.length > 0) {
+            <span class="menu-badge">{{ confirmedClients.length }}</span>
+          } @else if (item.badgeCount && item.label !== 'Dashboard' && item.label !== 'Conversations') {
+            <span class="menu-badge">{{ item.badgeCount }}</span>
+          }
+        </button>
+      }
+    </nav>
+  </aside>
+
+  <main class="dashboard-main">
+    <header class="top-header card">
+      <div class="search-bar">
+        <span>🔎</span>
+        <input
+          type="text"
+          [placeholder]="searchPlaceholder"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearch($event)"
+        />
+        @if (searchQuery) {
+          <button
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;"
+            (click)="searchQuery = ''"
+            aria-label="Clear search">✕</button>
+        }
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" aria-label="Notifications">🔔</button>
+        <div class="user-chip">
+          <div class="avatar">{{ (coachProfile?.prenom || coachName).charAt(0).toUpperCase() }}</div>
+          <div>
+            <p class="user-name">{{ coachName }}</p>
+            <p class="user-role">{{ coachRole }}</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    @if (isLoading) {
+      <section class="status-banner loading">Loading real backend data...</section>
+    }
+    @if (apiError) {
+      <section class="status-banner error">{{ apiError }}</section>
+    }
+
+    <!-- ═══ DASHBOARD TAB (FULL VIEW) ═══ -->
+    @if (activeTab === 'Dashboard') {
+      <section class="overview-grid">
+        @for (card of overviewCards; track card.label) {
+          <article class="card overview-card" [attr.data-accent]="card.accent">
+            <p class="kpi-label">{{ card.label }}</p>
+            <p class="kpi-value">{{ card.value }}</p>
+            <p class="kpi-helper">{{ card.helper }}</p>
+          </article>
+        }
+      </section>
+
+      <!-- RDV SECTION -->
+      <section class="section card">
+        <div class="section-header">
+          <h2>🗓️ Bloomer Appointments</h2>
+          @if (pendingRdvCount > 0) {
+            <span class="menu-badge">{{ pendingRdvCount }} pending</span>
+          }
+        </div>
+        <div class="rdv-tabs">
+          <button class="rdv-tab-btn" [class.active]="activeRdvTab === 'attente'" (click)="setRdvTab('attente')">
+            Pending <span class="menu-badge">{{ rdvEnAttente.length }}</span>
+          </button>
+          <button class="rdv-tab-btn" [class.active]="activeRdvTab === 'confirme'" (click)="setRdvTab('confirme')">
+            Confirmed <span class="pill active">{{ rdvConfirmes.length }}</span>
+          </button>
+          <button class="rdv-tab-btn" [class.active]="activeRdvTab === 'refuse'" (click)="setRdvTab('refuse')">
+            Rejected <span class="pill subtle">{{ rdvRefuses.length }}</span>
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Date & Time</th>
+                <th>Reason</th>
+                <th>Duration</th>
+                @if (activeRdvTab === 'attente') { <th>Actions</th> }
+              </tr>
+            </thead>
+            <tbody>
+              @if (activeRdvTab === 'attente') {
+                @for (rdv of rdvEnAttente; track rdv.id) {
+                  <tr>
+                    <td>{{ rdv.patientNom || 'Patient #' + rdv.userId }}</td>
+                    <td>{{ rdv.dateHeure | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>{{ rdv.motif }}</td>
+                    <td>{{ rdv.dureeMinutes }} min</td>
+                    <td class="actions-cell">
+                      <button class="ghost-btn" style="color:#16a34a;border-color:#16a34a" (click)="accepterRdv(rdv.id)">✓ Accept</button>
+                      <button class="ghost-btn danger" (click)="refuserRdv(rdv.id)">✗ Reject</button>
+                    </td>
+                  </tr>
+                }
+                @if (rdvEnAttente.length === 0) {
+                  <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1rem;">No pending appointments</td></tr>
+                }
+              }
+              @if (activeRdvTab === 'confirme') {
+                @for (rdv of rdvConfirmes; track rdv.id) {
+                  <tr>
+                    <td>{{ rdv.patientNom || 'Patient #' + rdv.userId }}</td>
+                    <td>{{ rdv.dateHeure | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>{{ rdv.motif }}</td>
+                    <td>{{ rdv.dureeMinutes }} min</td>
+                  </tr>
+                }
+                @if (rdvConfirmes.length === 0) {
+                  <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1rem;">No confirmed appointments</td></tr>
+                }
+              }
+              @if (activeRdvTab === 'refuse') {
+                @for (rdv of rdvRefuses; track rdv.id) {
+                  <tr>
+                    <td>{{ rdv.patientNom || 'Patient #' + rdv.userId }}</td>
+                    <td>{{ rdv.dateHeure | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>{{ rdv.motif }}</td>
+                    <td>{{ rdv.dureeMinutes }} min</td>
+                  </tr>
+                }
+                @if (rdvRefuses.length === 0) {
+                  <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1rem;">No rejected appointments</td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section card">
+        <div class="section-header">
+          <h2>Workout Plans</h2>
+          <button class="primary-btn" (click)="openAddPlanModal()">+ Create New Plan</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Plan Name</th>
+                <th>Duration</th>
+                <th>Sessions / Week</th>
+                <th>Associated Exercises</th>
+                <th>Assigned Clients</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (plan of workoutPlans; track plan.id) {
+                <tr>
+                  <td>{{ plan.nom }}</td>
+                  <td>{{ plan.dureeSemaines }} weeks</td>
+                  <td>{{ plan.seancesParSemaine }}</td>
+                  <td><span class="pill active">{{ plan.exercisesCount }} exercices</span></td>
+                  <td>{{ plan.assignedClientsCount }}</td>
+                  <td class="actions-cell">
+                    <button class="ghost-btn" (click)="openEditPlanModal(plan)">Edit</button>
+                    <button class="ghost-btn danger" (click)="deletePlan(plan)">Delete</button>
+                    <button class="ghost-btn" (click)="openAssignPlanToClientModalFromPlan(plan)">Assign</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="split-grid">
+        <article class="section card">
+          <div class="section-header">
+            <h2>Exercises Library</h2>
+            <button class="primary-btn" (click)="openAddExerciseModal()">+ Add Exercise</button>
+          </div>
+          <div class="stack-list">
+            @for (exercise of exercises; track exercise.id) {
+              <div class="list-item">
+                <div class="list-head">
+                  <h3>{{ exercise.nom }}</h3>
+                  <span class="pill">{{ exercise.categorie }}</span>
+                </div>
+                <p>{{ exercise.description }}</p>
+                <div class="row-actions">
+                  <button class="ghost-btn" (click)="openEditExerciseModal(exercise)">Edit</button>
+                  <button class="ghost-btn danger" (click)="deleteExercise(exercise)">Delete</button>
+                </div>
+              </div>
+            }
+          </div>
+        </article>
+
+        <article class="section card">
+          <div class="section-header">
+            <h2>Clients (Confirmed)</h2>
+          </div>
+          <div class="stack-list">
+            @if (clientsWithConfirmedRdv.length === 0) {
+              <p class="muted" style="padding: 1rem; text-align: center; font-size: 0.85rem;">No confirmed clients yet.</p>
+            }
+            @for (client of clientsWithConfirmedRdv; track client.id) {
+              <div class="list-item">
+                <div class="list-head">
+                  <h3>{{ client.name }}</h3>
+                  <span class="progress">{{ client.progressStatus }}</span>
+                </div>
+                <p>{{ client.email }}</p>
+                <div class="row-actions">
+                  <button class="ghost-btn" (click)="openClientDetails(client)">View Profile</button>
+                  <button class="ghost-btn" (click)="openAssignPlanToClientModal(client)">Assign Plan</button>
+                  <button class="ghost-btn" (click)="messageClient(client)">Message</button>
+                </div>
+              </div>
+            }
+          </div>
+        </article>
+      </section>
+
+      <section class="split-grid">
+        <article class="section card">
+          <div class="section-header">
+            <h2>Conversations</h2>
+            <button class="ghost-btn" (click)="setActiveTab('Conversations')">Open →</button>
+          </div>
+          <div class="stack-list compact">
+            @if (confirmedClients.length === 0) {
+              <p class="muted" style="padding: 1rem; text-align: center;">No confirmed clients yet.</p>
+            }
+            @for (client of confirmedClients.slice(0, 4); track client.id) {
+              <div class="chat-item" (click)="openConversation(client.id)" style="cursor:pointer">
+                <div class="conv-item-avatar-sm">{{ client.nom.charAt(0) }}</div>
+                <div>
+                  <h3>{{ client.nom }}</h3>
+                  <p class="muted">Click to open conversation</p>
+                </div>
+              </div>
+            }
+          </div>
+        </article>
+
+        <article class="section card">
+          <div class="section-header">
+            <h2>Analytics</h2>
+          </div>
+          <div class="analytics-list">
+            @for (item of analytics; track item.label) {
+              <div class="analytics-item">
+                <div class="analytics-head">
+                  <h3>{{ item.label }}</h3>
+                  <span>{{ item.value }}</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" [style.width.%]="item.fillPercent"></div>
+                </div>
+                <p class="muted">{{ item.trend }}</p>
+              </div>
+            }
+          </div>
+        </article>
+      </section>
+
+      <section class="split-grid">
+        <article class="section card subscription-card">
+          <div class="section-header">
+            <h2>Subscription</h2>
+            <span class="pill" [class.active]="subscription.status === 'Active'">{{ subscription.status }}</span>
+          </div>
+          <p class="sub-line"><strong>Current Plan:</strong> {{ subscription.currentPlan }}</p>
+          <p class="sub-line"><strong>Expiration Date:</strong> {{ subscription.expirationDate }}</p>
+          <p class="sub-line"><strong>Remaining:</strong> {{ subscription.remainingDays }} days</p>
+          <button
+            class="primary-btn"
+            (click)="renewSubscription()"
+            [style.opacity]="subscription.status === 'Active' ? '0.6' : '1'">
+            {{ subscription.status === 'Active' ? '✓ Active — Renew Early' : '🔄 Renew Subscription' }}
+          </button>
+        </article>
+
+        <article class="section card">
+          <div class="section-header">
+            <h2>Notifications</h2>
+          </div>
+          <ul class="notification-list">
+            @for (notification of notifications; track notification.id) {
+              <li>
+                <span class="pill subtle">{{ notification.type }}</span>
+                <p>{{ notification.text }}</p>
+              </li>
+            }
+          </ul>
+        </article>
+      </section>
+    }
+
+    <!-- ═══ CLIENTS TAB ═══ -->
+    @if (activeTab === 'Clients') {
+      <section class="section">
+        <div class="section-header">
+          <h2>🧑‍🤝‍🧑 My Clients</h2>
+          <span class="pill active">{{ clientsWithConfirmedRdv.length }} confirmed</span>
+        </div>
+        @if (clientsWithConfirmedRdv.length === 0) {
+          <div class="empty-state card">
+            <p>🗓️ No clients with confirmed appointments yet.</p>
+            <p class="muted">Clients appear here once you accept their appointment request.</p>
+          </div>
+        }
+        <div class="clients-grid">
+          @for (client of filteredClients; track client.id) {
+            <article class="card client-card" (click)="openClientDetails(client)">
+              <div class="client-card-header">
+                <div class="client-avatar">{{ client.name.charAt(0) }}</div>
+                <div class="client-info">
+                  <h3>{{ client.name }}</h3>
+                  <p class="muted">{{ client.email }}</p>
+                </div>
+                <span class="progress">{{ client.progressStatus }}</span>
+              </div>
+              <div class="client-card-body">
+                <p class="muted">Active Plans:</p>
+                <div class="tag-list">
+                  @for (plan of client.assignedPlans; track plan) {
+                    <span class="pill subtle">{{ plan }}</span>
+                  }
+                  @if (client.assignedPlans.length === 0) {
+                    <span class="muted" style="font-size: 0.8rem;">No active plans</span>
+                  }
+                </div>
+              </div>
+              <div class="client-card-footer" (click)="$event.stopPropagation()">
+                <button class="ghost-btn" (click)="openClientDetails(client)">Profile</button>
+                <button class="ghost-btn" (click)="openAssignPlanToClientModal(client)">Assign</button>
+                <button class="ghost-btn" (click)="messageClient(client)">Message</button>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ═══ WORKOUT PLANS TAB ═══ -->
+    @if (activeTab === 'Workout Plans') {
+      <section class="section">
+        <div class="section-header">
+          <h2>📋 Workout Plans Library</h2>
+          <button class="primary-btn" (click)="openAddPlanModal()">+ Create New Plan</button>
+        </div>
+        <div class="plans-grid">
+          @for (plan of filteredWorkoutPlans; track plan.id) {
+            <article class="card plan-card" (click)="openPlanView(plan.id)">
+              <div class="plan-card-header">
+                <h3>{{ plan.nom }}</h3>
+                <span class="pill active">{{ plan.exercisesCount }} ex.</span>
+              </div>
+              <p class="plan-meta">{{ plan.dureeSemaines }} weeks • {{ plan.seancesParSemaine }} sessions/week</p>
+              <div class="plan-card-footer">
+                <span class="muted">{{ plan.assignedClientsCount }} clients assigned</span>
+                <div class="row-actions" (click)="$event.stopPropagation()">
+                  <button class="ghost-btn" (click)="openEditPlanModal(plan)">Edit</button>
+                  <button class="ghost-btn danger" (click)="deletePlan(plan)">Delete</button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ═══ EXERCISES TAB ═══ -->
+    @if (activeTab === 'Exercises') {
+      <section class="section">
+        <div class="section-header">
+          <h2>🏋️ Exercises Library</h2>
+          <button class="primary-btn" (click)="openAddExerciseModal()">+ Add Exercise</button>
+        </div>
+        <div class="exercises-grid">
+          @for (exercise of filteredExercises; track exercise.id) {
+            <article class="card exercise-card">
+              <div class="exercise-card-header">
+                <div class="ex-icon">🏋️</div>
+                <div class="ex-info">
+                  <h3>{{ exercise.nom }}</h3>
+                  <span class="pill subtle">{{ exercise.categorie }}</span>
+                </div>
+              </div>
+              <p class="ex-desc">{{ exercise.description }}</p>
+              <div class="exercise-card-footer">
+                <button class="ghost-btn" (click)="openEditExerciseModal(exercise)">Edit</button>
+                <button class="ghost-btn danger" (click)="deleteExercise(exercise)">Delete</button>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ═══ CONVERSATIONS TAB ═══ -->
+    @if (activeTab === 'Conversations') {
+      <section class="section conv-section">
+        @if (showConversation) {
+          <app-chat
+            [patients]="confirmedClients"
+            [initialPatientId]="selectedClientId"
+            [role]="'coach'"
+            [userId]="coachIdentity?.coachId"
+          ></app-chat>
+        }
+      </section>
+    }
+
+    <!-- ═══ SUBSCRIPTION TAB ═══ -->
+    @if (activeTab === 'Subscription') {
+      <section class="section split-grid">
+        <article class="card subscription-card-large">
+          <div class="section-header">
+            <h2>💳 Subscription Details</h2>
+            <span class="pill active">{{ subscription.status }}</span>
+          </div>
+          <div class="sub-details">
+            <div class="sub-info">
+              <p class="muted">Current Plan</p>
+              <p class="sub-value">{{ subscription.currentPlan }}</p>
+            </div>
+            <div class="sub-info">
+              <p class="muted">Expires On</p>
+              <p class="sub-value">{{ subscription.expirationDate }}</p>
+            </div>
+            <div class="sub-info">
+              <p class="muted">Remaining</p>
+              <p class="sub-value">{{ subscription.remainingDays }} days</p>
+            </div>
+          </div>
+          <div class="renewal-section">
+            <h3>Renew your subscription</h3>
+            <p class="muted">Choose a plan to extend your professional access.</p>
+            <div class="plans-options">
+              <div class="plan-opt">
+                <p><strong>1 Month</strong></p>
+                <p class="muted" style="font-size:0.8rem;">300 DZD/month</p>
+                <button class="primary-btn" (click)="renewSubscription()">Choose</button>
+              </div>
+              <div class="plan-opt featured">
+                <p><strong>3 Months</strong></p>
+                <p class="muted" style="font-size:0.8rem;">Save 15% · 250 DZD/month</p>
+                <button class="primary-btn" (click)="renewSubscription()">Choose</button>
+              </div>
+              <div class="plan-opt">
+                <p><strong>1 Year ⭐</strong></p>
+                <p class="muted" style="font-size:0.8rem;">Save 30% · 180 DZD/month</p>
+                <button class="primary-btn" (click)="renewSubscription()">Choose</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    }
+
+    <!-- ═══ PROFILE TAB ═══ -->
+    @if (activeTab === 'Profile') {
+      <section class="section profile-page">
+
+        @if (coachProfileLoading) {
+          <div class="profile-loading">Loading profile…</div>
+        }
+
+        @if (!coachProfileLoading) {
+
+          <!-- Profile Header Card -->
+          <div class="card profile-hero">
+            <div class="profile-hero-bg"></div>
+            <div class="profile-hero-body">
+              <div class="profile-hero-avatar">
+                {{ (coachProfile?.prenom ?? coachName).charAt(0).toUpperCase() }}
+              </div>
+              <div class="profile-hero-info">
+                <h2>{{ coachProfile?.prenom ?? '' }} {{ coachProfile?.nom ?? '' }}</h2>
+                <p class="profile-hero-role">{{ coachProfile?.coachSpecialite || 'Performance Coach' }}</p>
+                <div class="profile-hero-badges">
+                  <span class="pill active">{{ coachProfile?.role ?? 'COACH' }}</span>
+                  <span class="pill" [class.active]="coachProfile?.active">
+                    {{ coachProfile?.active ? '● Active' : '○ Inactive' }}
+                  </span>
+                  <span class="pill subtle">{{ coachProfile?.typeAbonnement ?? '—' }}</span>
+                </div>
+              </div>
+              <button class="primary-btn" (click)="coachProfileEditing = !coachProfileEditing">
+                {{ coachProfileEditing ? 'Cancel' : '✏️ Edit Profile' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="profile-stats-row">
+            <div class="card profile-stat-card">
+              <p class="kpi-value">{{ clientsWithConfirmedRdv.length }}</p>
+              <p class="kpi-label">Confirmed Clients</p>
+            </div>
+            <div class="card profile-stat-card">
+              <p class="kpi-value">{{ workoutPlans.length }}</p>
+              <p class="kpi-label">Workout Plans</p>
+            </div>
+            <div class="card profile-stat-card">
+              <p class="kpi-value">{{ exercises.length }}</p>
+              <p class="kpi-label">Exercises</p>
+            </div>
+            <div class="card profile-stat-card">
+              <p class="kpi-value">{{ rdvConfirmes.length }}</p>
+              <p class="kpi-label">Confirmed RDV</p>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="profile-tabs">
+            <button class="profile-tab-btn" [class.active]="coachProfileTab === 'info'" (click)="coachProfileTab = 'info'">
+              👤 Personal Info
+            </button>
+            <button class="profile-tab-btn" [class.active]="coachProfileTab === 'security'" (click)="coachProfileTab = 'security'">
+              🔒 Security
+            </button>
+            <button class="profile-tab-btn" [class.active]="coachProfileTab === 'stats'" (click)="coachProfileTab = 'stats'">
+              📊 Activity
+            </button>
+          </div>
+
+          <!-- Feedback messages -->
+          @if (coachProfileSuccess) {
+            <div class="profile-alert success">✓ {{ coachProfileSuccess }}</div>
+          }
+          @if (coachProfileError) {
+            <div class="profile-alert error">⚠ {{ coachProfileError }}</div>
+          }
+
+          <!-- ── TAB: Personal Info ── -->
+          @if (coachProfileTab === 'info') {
+            <div class="card profile-section-card">
+              @if (!coachProfileEditing) {
+                <!-- View mode -->
+                <div class="profile-info-grid">
+                  <div class="profile-info-item">
+                    <p class="profile-info-label">First Name</p>
+                    <p class="profile-info-value">{{ coachProfile?.prenom || '—' }}</p>
+                  </div>
+                  <div class="profile-info-item">
+                    <p class="profile-info-label">Last Name</p>
+                    <p class="profile-info-value">{{ coachProfile?.nom || '—' }}</p>
+                  </div>
+                  <div class="profile-info-item">
+                    <p class="profile-info-label">Email</p>
+                    <p class="profile-info-value">{{ coachProfile?.email || '—' }}</p>
+                  </div>
+                  <div class="profile-info-item">
+                    <p class="profile-info-label">Phone</p>
+                    <p class="profile-info-value">{{ coachProfile?.telephone || '—' }}</p>
+                  </div>
+                  <div class="profile-info-item">
+                    <p class="profile-info-label">Speciality</p>
+                    <p class="profile-info-value">{{ coachProfile?.coachSpecialite || '—' }}</p>
+                  </div>
+                  <div class="profile-info-item">
+                    <p class="profile-info-label">Subscription</p>
+                    <p class="profile-info-value">{{ coachProfile?.typeAbonnement || '—' }}</p>
+                  </div>
+                  <div class="profile-info-item profile-info-full">
+                    <p class="profile-info-label">Certifications</p>
+                    <p class="profile-info-value">{{ coachProfile?.certifications || 'No certifications listed' }}</p>
+                  </div>
+                </div>
+              } @else {
+                <!-- Edit mode -->
+                <form (ngSubmit)="saveCoachProfile()">
+                  <div class="profile-form-grid">
+                    <div class="form-group">
+                      <label>First Name</label>
+                      <input type="text" [(ngModel)]="coachProfileForm.prenom" name="prenom" required>
+                    </div>
+                    <div class="form-group">
+                      <label>Last Name</label>
+                      <input type="text" [(ngModel)]="coachProfileForm.nom" name="nom" required>
+                    </div>
+                    <div class="form-group">
+                      <label>Phone</label>
+                      <input type="tel" [(ngModel)]="coachProfileForm.telephone" name="telephone">
+                    </div>
+                    <div class="form-group">
+                      <label>Speciality</label>
+                      <input type="text" [(ngModel)]="coachProfileForm.coachSpecialite" name="coachSpecialite" placeholder="e.g. Strength & Conditioning">
+                    </div>
+                    <div class="form-group profile-form-full">
+                      <label>Certifications</label>
+                      <textarea [(ngModel)]="coachProfileForm.certifications" name="certifications" rows="3" placeholder="e.g. NSCA-CSCS, ACE, NASM..."></textarea>
+                    </div>
+                  </div>
+                  <div class="profile-form-actions">
+                    <button type="submit" class="primary-btn" [disabled]="coachProfileSaving">
+                      {{ coachProfileSaving ? 'Saving…' : '💾 Save Changes' }}
+                    </button>
+                    <button type="button" class="ghost-btn" (click)="coachProfileEditing = false">Cancel</button>
+                  </div>
+                </form>
+              }
+            </div>
+          }
+
+          <!-- ── TAB: Security ── -->
+          @if (coachProfileTab === 'security') {
+            <div class="card profile-section-card">
+              <h3 class="profile-section-title">🔒 Change Password</h3>
+              <form (ngSubmit)="saveCoachPassword()">
+                <div class="profile-form-grid">
+                  <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" [(ngModel)]="coachPasswordForm.nouveau" name="nouveau" placeholder="Min. 8 characters">
+                  </div>
+                  <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" [(ngModel)]="coachPasswordForm.confirmer" name="confirmer" placeholder="Repeat new password">
+                  </div>
+                </div>
+                <div class="profile-form-actions">
+                  <button type="submit" class="primary-btn" [disabled]="coachProfileSaving">
+                    {{ coachProfileSaving ? 'Saving…' : '🔑 Change Password' }}
+                  </button>
+                </div>
+              </form>
+
+              <div class="profile-danger-zone">
+                <h3 class="profile-section-title" style="color:#dc2626;">⚠️ Session</h3>
+                <p class="muted">Log out from your current session.</p>
+                <button class="ghost-btn danger" (click)="logout()">🚪 Log Out</button>
+              </div>
+            </div>
+          }
+
+          <!-- ── TAB: Activity ── -->
+          @if (coachProfileTab === 'stats') {
+            <div class="card profile-section-card">
+              <h3 class="profile-section-title">📊 Activity Overview</h3>
+              <div class="profile-activity-grid">
+                <div class="profile-activity-item">
+                  <div class="activity-icon">🗓️</div>
+                  <div>
+                    <p class="profile-info-value">{{ rdvEnAttente.length }}</p>
+                    <p class="profile-info-label">Pending Appointments</p>
+                  </div>
+                </div>
+                <div class="profile-activity-item">
+                  <div class="activity-icon">✅</div>
+                  <div>
+                    <p class="profile-info-value">{{ rdvConfirmes.length }}</p>
+                    <p class="profile-info-label">Confirmed Appointments</p>
+                  </div>
+                </div>
+                <div class="profile-activity-item">
+                  <div class="activity-icon">💬</div>
+                  <div>
+                    <p class="profile-info-value">{{ totalUnreadMessages }}</p>
+                    <p class="profile-info-label">Unread Messages</p>
+                  </div>
+                </div>
+                <div class="profile-activity-item">
+                  <div class="activity-icon">📋</div>
+                  <div>
+                    <p class="profile-info-value">{{ workoutPlans.length }}</p>
+                    <p class="profile-info-label">Active Plans</p>
+                  </div>
+                </div>
+                <div class="profile-activity-item">
+                  <div class="activity-icon">🏋️</div>
+                  <div>
+                    <p class="profile-info-value">{{ exercises.length }}</p>
+                    <p class="profile-info-label">Exercises in Library</p>
+                  </div>
+                </div>
+                <div class="profile-activity-item">
+                  <div class="activity-icon">🧑‍🤝‍🧑</div>
+                  <div>
+                    <p class="profile-info-value">{{ clientsWithConfirmedRdv.length }}</p>
+                    <p class="profile-info-label">Active Clients</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+        }
+      </section>
+    }
+  </main>
+
+  <!-- ═══ MODALS ═══ -->
+
+  <!-- Client Details Modal -->
+  <div *ngIf="showClientDetailsModal" class="modal-overlay" (click)="closeClientDetails()">
+    <div class="modal-content large-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Client Profile</h2>
+        <button class="close-btn" (click)="closeClientDetails()">×</button>
+      </div>
+      <div class="modal-body" *ngIf="selectedClient">
+
+        <!-- Loading state -->
+        @if (clientProfileLoading) {
+          <div style="text-align:center; padding: 2rem; color: var(--muted);">Loading profile…</div>
+        }
+
+        @if (!clientProfileLoading) {
+          <!-- Header with avatar -->
+          <div class="client-profile-header">
+            <div class="client-profile-avatar">
+              {{ selectedClient.name.charAt(0).toUpperCase() }}
+            </div>
+            <div>
+              <h3 style="margin:0; font-size:1.3rem;">{{ selectedClient.name }}</h3>
+              <p style="margin:0; color:var(--muted);">{{ selectedClient.email }}</p>
+              <span class="progress" style="margin-top:0.4rem; display:inline-block;">{{ selectedClient.progressStatus }}</span>
+            </div>
+          </div>
+
+          <!-- Personal info -->
+          <div class="client-profile-section">
+            <h4 class="client-section-title">📋 Personal Information</h4>
+            <div class="client-info-grid">
+              <div class="client-info-item">
+                <p class="muted">Age</p>
+                <p><strong>{{ clientProfile?.age ?? '—' }} years</strong></p>
+              </div>
+              <div class="client-info-item">
+                <p class="muted">Phone</p>
+                <p><strong>{{ clientProfile?.telephone ?? '—' }}</strong></p>
+              </div>
+              <div class="client-info-item">
+                <p class="muted">Subscription</p>
+                <p><strong>{{ clientProfile?.typeAbonnement ?? '—' }}</strong></p>
+              </div>
+              <div class="client-info-item">
+                <p class="muted">Lifestyle Level</p>
+                <p><strong>{{ clientProfile?.lifestyleLevel ?? '—' }}</strong></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Physical stats -->
+          <div class="client-profile-section">
+            <h4 class="client-section-title">⚖️ Physical Stats</h4>
+            <div class="client-info-grid">
+              <div class="client-info-item">
+                <p class="muted">Weight</p>
+                <p><strong>{{ clientProfile?.weight ? clientProfile.weight + ' kg' : '—' }}</strong></p>
+              </div>
+              <div class="client-info-item">
+                <p class="muted">Height</p>
+                <p><strong>{{ clientProfile?.height ? clientProfile.height + ' cm' : '—' }}</strong></p>
+              </div>
+              <div class="client-info-item">
+                <p class="muted">BMI</p>
+                <p>
+                  <strong [style.color]="getImcAccent(getImcValue(clientProfile)) === 'green' ? '#16a34a' :
+                                         getImcAccent(getImcValue(clientProfile)) === 'orange' ? '#ea580c' :
+                                         getImcAccent(getImcValue(clientProfile)) === 'red' ? '#dc2626' : '#3b82f6'">
+                    {{ getImcValue(clientProfile) ?? '—' }}
+                  </strong>
+                </p>
+              </div>
+              <div class="client-info-item">
+                <p class="muted">BMI Status</p>
+                <p><strong>{{ getImcLabel(getImcValue(clientProfile)) }}</strong></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Goal -->
+          <div class="client-profile-section">
+            <h4 class="client-section-title">🎯 Goal</h4>
+            <p style="background:#f8fafc; border-radius:10px; padding:0.75rem 1rem; margin:0; border:1px solid var(--line);">
+              {{ clientProfile?.goal ?? 'No goal defined' }}
+            </p>
+          </div>
+
+          <!-- Assigned plans -->
+          <div class="client-profile-section">
+            <h4 class="client-section-title">📋 Assigned Workout Plans</h4>
+            <div class="tag-list">
+              @for (plan of selectedClient.assignedPlans; track plan) {
+                <span class="pill active">{{ plan }}</span>
+              }
+              @if (selectedClient.assignedPlans.length === 0) {
+                <span class="muted">No plans assigned yet</span>
+              }
+            </div>
+          </div>
+        }
+
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" (click)="openAssignPlanToClientModal(selectedClient!)">Assign Plan</button>
+        <button class="ghost-btn" (click)="messageClient(selectedClient!)">Message</button>
+        <button class="ghost-btn" (click)="closeClientDetails()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan View Modal (Details + Exercises) -->
+  <div *ngIf="showPlanViewModal" class="modal-overlay" (click)="closePlanView()">
+    <div class="modal-content large-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Workout Plan Details</h2>
+        <button class="close-btn" (click)="closePlanView()">×</button>
+      </div>
+      <div class="modal-body" *ngIf="selectedPlan">
+        <div class="view-section">
+          <h3>{{ selectedPlan.nom }}</h3>
+          <p>{{ selectedPlan.description || 'No description provided for this plan.' }}</p>
+          <div class="view-grid">
+            <div class="view-item">
+              <p class="muted">Duration</p>
+              <p><strong>{{ selectedPlan.dureeSemaines }} weeks</strong></p>
+            </div>
+            <div class="view-item">
+              <p class="muted">Frequency</p>
+              <p><strong>{{ selectedPlan.seancesParSemaine }} sessions / week</strong></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="view-section">
+          <h3>Included Exercises ({{ selectedPlan.exercices?.length || 0 }})</h3>
+          <div class="exercise-list-detailed">
+            @for (ex of selectedPlan.exercices; track ex.id) {
+              <div class="ex-detail-item">
+                <div class="ex-info">
+                  <h4>{{ ex.nom }}</h4>
+                  <p class="muted">{{ ex.description }}</p>
+                </div>
+                <div class="ex-stats">
+                  <span><strong>{{ ex.series || 0 }}</strong> sets</span>
+                  <span><strong>{{ ex.repetitions || 0 }}</strong> reps</span>
+                  @if (ex.poidsKg) { <span><strong>{{ ex.poidsKg }}</strong> kg</span> }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" (click)="openAddExerciseToPlan(selectedPlan!)">+ Add Exercise</button>
+        <button class="ghost-btn" (click)="openAssignPlanToClientModalFromPlan(selectedPlan!)">Assign to Client</button>
+        <button class="ghost-btn" (click)="duplicatePlan(selectedPlan!)">Duplicate Plan</button>
+        <button class="ghost-btn" (click)="closePlanView()">Close View</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan CRUD Modal (Existing) -->
+  <div *ngIf="showPlanModal" class="modal-overlay" (click)="closePlanModal()">
+    <div class="modal-content large-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditingPlan ? 'Edit Workout Plan' : (autoAssignClientId ? 'Create & Assign Plan' : 'Create New Plan') }}</h2>
+        <button class="close-btn" (click)="closePlanModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="savePlan()">
+          <div class="form-section">
+            <h3>Plan Details</h3>
+            <div class="form-group">
+              <label for="planName">Plan Name *</label>
+              <input type="text" id="planName" [(ngModel)]="planForm.nom" name="nom" required placeholder="e.g. Summer Shred 2024">
+            </div>
+            <div class="form-group">
+              <label for="planDesc">Description</label>
+              <textarea id="planDesc" [(ngModel)]="planForm.description" name="description" rows="2" placeholder="Describe the goals of this plan..."></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="planDuration">Duration (weeks) *</label>
+                <input type="number" id="planDuration" [(ngModel)]="planForm.dureeSemaines" name="dureeSemaines" min="1" required>
+              </div>
+              <div class="form-group">
+                <label for="planSessions">Sessions per week *</label>
+                <input type="number" id="planSessions" [(ngModel)]="planForm.seancesParSemaine" name="seancesParSemaine" min="1" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="planStart">Start Date *</label>
+              <input type="date" id="planStart" [(ngModel)]="planForm.dateDebut" name="dateDebut" required>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Exercises Selection</h3>
+            <p class="helper-text">Select exercises from the library to include in this plan.</p>
+
+            <div class="exercise-selection-list">
+              @if (exercises.length === 0) {
+                <p class="muted" style="padding: 0.75rem; text-align:center;">No exercises in library yet. Add some from the Exercises tab first.</p>
+              }
+              @for (ex of exercises; track ex.id) {
+                <div class="exercise-checkbox-item" [class.checked]="selectedExerciseIds.includes(ex.id)" (click)="toggleExerciseSelection(ex.id)">
+                  <input type="checkbox" [id]="'ex-' + ex.id" [checked]="selectedExerciseIds.includes(ex.id)" (click)="$event.stopPropagation()" (change)="toggleExerciseSelection(ex.id)">
+                  <label [for]="'ex-' + ex.id" (click)="$event.preventDefault()">
+                    <span class="ex-check-name">{{ ex.nom }}</span>
+                    <span class="muted ex-check-cat">{{ ex.categorie }}</span>
+                  </label>
+                  @if (selectedExerciseIds.includes(ex.id)) {
+                    <span class="ex-selected-badge">✓</span>
+                  }
+                </div>
+              }
+            </div>
+
+            @if (selectedExerciseIds.length > 0) {
+              <p class="helper-text" style="margin-top: 0.5rem;">
+                <strong>{{ selectedExerciseIds.length }}</strong> exercise(s) selected
+              </p>
+            }
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="cancel-btn" (click)="closePlanModal()">Cancel</button>
+            <button type="submit" class="save-btn">
+              {{ isEditingPlan ? 'Update Plan' : (autoAssignClientId ? 'Save & Assign to Client' : 'Save Plan') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise Modal -->
+  <div *ngIf="showExerciseModal" class="modal-overlay" (click)="closeExerciseModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditingExercise ? 'Edit Exercise' : 'Add New Exercise' }}</h2>
+        <button class="close-btn" (click)="closeExerciseModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="saveExercise()">
+          <div class="form-group">
+            <label for="exerciseName">Exercise Name *</label>
+            <input type="text" id="exerciseName" [(ngModel)]="exerciseForm.nom" name="nom" required>
+          </div>
+          <div class="form-group">
+            <label for="exerciseDescription">Description *</label>
+            <textarea id="exerciseDescription" [(ngModel)]="exerciseForm.description" name="description" rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="exercisePlan">Assign to Plan (Optional)</label>
+            <select id="exercisePlan" [(ngModel)]="exerciseForm.planExerciceId" name="planExerciceId">
+              <option [ngValue]="null">-- No Plan (Library Only) --</option>
+              <option *ngFor="let plan of workoutPlans" [ngValue]="plan.id">{{ plan.nom }}</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="exerciseSeries">Sets</label>
+              <input type="number" id="exerciseSeries" [(ngModel)]="exerciseForm.series" name="series" min="1">
+            </div>
+            <div class="form-group">
+              <label for="exerciseRepetitions">Reps</label>
+              <input type="number" id="exerciseRepetitions" [(ngModel)]="exerciseForm.repetitions" name="repetitions" min="1">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="exerciseDuration">Duration (sec)</label>
+              <input type="number" id="exerciseDuration" [(ngModel)]="exerciseForm.dureeSecondes" name="dureeSecondes" min="1">
+            </div>
+            <div class="form-group">
+              <label for="exerciseRest">Rest (sec)</label>
+              <input type="number" id="exerciseRest" [(ngModel)]="exerciseForm.tempsReposSecondes" name="tempsReposSecondes" min="0">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="exerciseWeight">Weight (kg)</label>
+            <input type="number" id="exerciseWeight" [(ngModel)]="exerciseForm.poidsKg" name="poidsKg" min="0" step="0.5">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="cancel-btn" (click)="closeExerciseModal()">Cancel</button>
+            <button type="submit" class="save-btn">{{ isEditingExercise ? 'Save' : 'Add' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assignment Modal -->
+  <div *ngIf="showAssignmentModal" class="modal-overlay" (click)="closeAssignmentModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ assignmentContext === 'client' ? 'Assign Plan to Client' : 'Assign Client to Plan' }}</h2>
+        <button class="close-btn" (click)="closeAssignmentModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="muted" style="margin-bottom: 1rem;">
+          {{ assignmentContext === 'client'
+            ? 'Select an existing plan or create a new one for this client:'
+            : 'Select a client to assign this plan to:' }}
+        </p>
+
+        <!-- When context is 'client': show list of plans to pick + create button -->
+        @if (assignmentContext === 'client') {
+          <div class="assignment-list">
+            @for (plan of availableItemsForAssignment; track plan.id) {
+              <div
+                class="assignment-item"
+                [class.selected]="assignmentSelectionId === plan.id"
+                (click)="assignmentSelectionId = plan.id">
+                <div class="assignment-item-info">
+                  <strong>{{ plan.nom }}</strong>
+                  <span class="muted">{{ plan.dureeSemaines }} weeks · {{ plan.seancesParSemaine }} sessions/week</span>
+                </div>
+                <span class="pill subtle">{{ plan.assignedClientsCount }} clients</span>
+              </div>
+            }
+            @if (availableItemsForAssignment.length === 0) {
+              <p class="muted" style="padding: 0.75rem; text-align:center;">No workout plans yet. Create one below.</p>
+            }
+          </div>
+
+          <!-- Create new plan button -->
+          <button
+            class="create-plan-inline-btn"
+            (click)="openCreatePlanForClient(targetAssignmentId!)">
+            + Create New Plan &amp; Assign Automatically
+          </button>
+        }
+
+        <!-- When context is 'plan': show list of clients to pick -->
+        @if (assignmentContext === 'plan') {
+          <div class="assignment-list">
+            @for (client of availableItemsForAssignment; track client.id) {
+              <div
+                class="assignment-item"
+                [class.selected]="assignmentSelectionId === client.id"
+                (click)="assignmentSelectionId = client.id">
+                <div class="assignment-item-info">
+                  <strong>{{ client.name }}</strong>
+                  <span class="muted">{{ client.email }}</span>
+                </div>
+                <span class="progress">{{ client.progressStatus }}</span>
+              </div>
+            }
+            @if (availableItemsForAssignment.length === 0) {
+              <p class="muted">No clients found.</p>
+            }
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="primary-btn" [disabled]="!assignmentSelectionId" (click)="confirmAssignment()">Confirm Assignment</button>
+        <button class="ghost-btn" (click)="closeAssignmentModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>

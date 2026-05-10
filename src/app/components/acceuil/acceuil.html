@@ -1,0 +1,214 @@
+!-- NAV -->
+<nav class="hf-nav">
+  <div class="logo">HealthFlow</div>
+  <ul class="nav-links">
+    <li><a href="#features">Fonctionnalités</a></li>
+    <li><a href="#how">Comment ça marche</a></li>
+    <li><a href="#temoignages">Témoignages</a></li>
+    <li><a href="#" (click)="openInfo()">À propos</a></li>
+  </ul>
+  <button class="nav-cta" (click)="scrollToRoles()">Rejoindre</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="floating-blob blob1"></div>
+  <div class="floating-blob blob2"></div>
+  <div class="floating-blob blob3"></div>
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      Plateforme santé & bien-être tout-en-un
+    </div>
+    <h1>Votre santé,<br>réinventée.</h1>
+    <p class="hero-desc">
+      HealthFlow connecte nutritionnistes, coachs et membres pour une expérience
+      bien-être complète, personnalisée et transformatrice.
+    </p>
+
+    <p class="role-title">Vous rejoignez en tant que</p>
+    <div class="role-cards" id="roles">
+      <button class="role-card rc-nutritionist"  [routerLink]="['/authentification','nutritionist']">
+        <span class="role-icon">🥗</span>
+        <span class="role-name">Nutritionniste</span>
+        <span class="role-sub">Gérez vos patients</span>
+      </button>
+      <button class="role-card rc-coach"  [routerLink]="['/authentification','coach']">
+        <span class="role-icon">💪</span>
+        <span class="role-name">Coach</span>
+        <span class="role-sub">Suivez vos élèves</span>
+      </button>
+      <button class="role-card rc-bloomer"  [routerLink]="['/authentification','bloomer']">
+        <span class="role-icon">🌸</span>
+        <span class="role-name">Bloomer</span>
+        <span class="role-sub">Rejoignez le mouvement</span>
+      </button>
+    </div>
+
+    <div class="hero-actions">
+      <button class="btn-outline" (click)="openInfo()">En savoir plus</button>
+      <button class="btn-outline" (click)="scrollToFeatures()">Voir les fonctionnalités</button>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-num">12k+</div><div class="stat-label">Utilisateurs actifs</div></div>
+  <div class="stat"><div class="stat-num">350+</div><div class="stat-label">Professionnels certifiés</div></div>
+  <div class="stat"><div class="stat-num">98%</div><div class="stat-label">Taux de satisfaction</div></div>
+  <div class="stat"><div class="stat-num">4.9 ★</div><div class="stat-label">Note moyenne</div></div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <p class="section-label">Fonctionnalités</p>
+  <h2 class="section-title">Tout ce dont vous avez besoin</h2>
+  <p class="section-sub">Des outils puissants conçus pour les professionnels de santé et leurs membres.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon fi-green">🗓️</div>
+      <div class="feature-name">Suivi personnalisé</div>
+      <div class="feature-desc">Plans alimentaires et programmes d'entraînement sur mesure, adaptés à chaque profil.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-orange">📊</div>
+      <div class="feature-name">Tableaux de bord</div>
+      <div class="feature-desc">Visualisez la progression de vos patients et membres en temps réel avec des graphiques clairs.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-purple">💬</div>
+      <div class="feature-name">Messagerie intégrée</div>
+      <div class="feature-desc">Communiquez facilement avec votre équipe ou vos professionnels via une messagerie sécurisée.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-pink">🏆</div>
+      <div class="feature-name">Défis & Récompenses</div>
+      <div class="feature-desc">Motivez vos membres avec des défis hebdomadaires, badges et classements communautaires.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="how-bg">
+  <p class="section-label">Comment ça marche</p>
+  <h2 class="section-title">Simple et efficace</h2>
+  <p class="section-sub">Commencez votre parcours santé en 3 étapes.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Choisissez votre rôle</div>
+      <div class="step-desc">Nutritionniste, coach ou Bloomer — créez votre profil en quelques minutes.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Connectez-vous</div>
+      <div class="step-desc">Les professionnels et membres se trouvent et collaborent facilement.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Progressez ensemble</div>
+      <div class="step-desc">Suivez vos objectifs, partagez vos résultats et célébrez vos succès.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="temoignages">
+  <p class="section-label">Témoignages</p>
+  <h2 class="section-title">Ils nous font confiance</h2>
+  <p class="section-sub">Découvrez comment HealthFlow a transformé leur quotidien.</p>
+  <div class="testimonials-grid">
+    <div class="tcard">
+      <div class="tcard-header">
+        <div class="tavatar" style="background: linear-gradient(135deg,#22c55e,#4ade80)">SA</div>
+        <div><div class="tname">Sarah A.</div><div class="trole">Nutritionniste</div></div>
+      </div>
+      <div class="tstars">★★★★★</div>
+      <p class="ttext">"HealthFlow a révolutionné ma façon de suivre mes patients. Tout est centralisé et mes consultations sont 2x plus efficaces."</p>
+    </div>
+    <div class="tcard">
+      <div class="tcard-header">
+        <div class="tavatar" style="background: linear-gradient(135deg,#f97316,#fb923c)">KM</div>
+        <div><div class="tname">Karim M.</div><div class="trole">Coach sportif</div></div>
+      </div>
+      <div class="tstars">★★★★★</div>
+      <p class="ttext">"La messagerie et les tableaux de bord m'ont permis de suivre 30 élèves sans me perdre. Une vraie révolution !"</p>
+    </div>
+    <div class="tcard">
+      <div class="tcard-header">
+        <div class="tavatar" style="background: linear-gradient(135deg,#a855f7,#ec4899)">LB</div>
+        <div><div class="tname">Lina B.</div><div class="trole">Bloomer</div></div>
+      </div>
+      <div class="tstars">★★★★★</div>
+      <p class="ttext">"En 3 mois, j'ai atteint mes objectifs grâce à mon coach et ma nutritionniste sur HealthFlow. Je me sens transformée !"</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA SECTION -->
+<section class="cta-section">
+  <h2>Prêt à transformer votre santé ?</h2>
+  <p>Rejoignez des milliers de professionnels et membres qui font confiance à HealthFlow.</p>
+  <div class="cta-btns">
+    <button class="btn-white" (click)="scrollToRoles()">Commencer maintenant</button>
+    <button class="btn-ghost" (click)="openInfo()">En savoir plus</button>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="hf-footer">
+  <div class="logo">HealthFlow</div>
+  <ul class="footer-links">
+    <li><a href="#">Confidentialité</a></li>
+    <li><a href="#">CGU</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Support</a></li>
+  </ul>
+  <p class="footer-copy">© 2025 HealthFlow. Tous droits réservés.</p>
+</footer>
+
+<!-- ROLE MODAL -->
+@if (roleModalOpen) {
+  <div class="modal-overlay" (click)="onOverlayClick($event, 'role')">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closeModal('role')">✕</button>
+      <div class="modal-icon">{{ selectedRole?.icon }}</div>
+      <h2>{{ selectedRole?.title }}</h2>
+      <span class="modal-role" [style.background]="selectedRole?.color">{{ selectedRole?.badge }}</span>
+      <p>{{ selectedRole?.desc }}</p>
+      <ul class="modal-features">
+        @for (f of selectedRole!.features; track $index) {
+          <li>{{ f }}</li>
+        }
+      </ul>
+      <button
+        class="modal-btn"
+        [style.background]="selectedRole?.color"
+        (click)="goToInscription()">
+        {{ selectedRole?.btn }}
+      </button>
+    </div>
+  </div>
+}
+
+<!-- INFO MODAL -->
+@if (infoModalOpen) {
+  <div class="modal-overlay" (click)="onOverlayClick($event, 'info')">
+    <div class="modal info-modal" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closeModal('info')">✕</button>
+      <div class="modal-icon">💡</div>
+      <h2>À propos de HealthFlow</h2>
+      <p>HealthFlow est une plateforme complète qui connecte nutritionnistes, coachs sportifs et membres (Bloomers) dans un écosystème santé unifié.</p>
+      <p style="margin-top:12px">Notre mission : rendre le bien-être accessible, personnalisé et motivant pour tous.</p>
+      <ul class="modal-features" style="margin-top:20px">
+        <li>Plateforme sécurisée et certifiée</li>
+        <li>Données de santé protégées (RGPD)</li>
+        <li>Support disponible 7j/7</li>
+        <li>Application mobile disponible</li>
+      </ul>
+      <button class="modal-btn" style="background:linear-gradient(135deg,#a855f7,#ec4899)" (click)="closeModal('info')">Fermer</button>
+    </div>
+  </div>
+}
