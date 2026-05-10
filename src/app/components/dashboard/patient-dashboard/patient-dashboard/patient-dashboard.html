@@ -58,6 +58,10 @@
         <span class="nav-label">Coach Sportif</span>
       </button>
     </div>
+
+    <!-- Notification bell in sidebar -->
+    <div style="padding: 0.75rem 1rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
+    </div>
   </nav>
 
   <!-- MAIN CONTENT -->
@@ -71,6 +75,7 @@
         <p class="page-sub">Bienvenue {{ profile.prenom }} 👋</p>
       </div>
       <div class="header-actions">
+        <app-notification-bell [lang]="'fr'" [userId]="userId"></app-notification-bell>
         <button class="btn-primary" (click)="goTo('rdv-nutritionniste')">🩺 RDV Nutritionniste</button>
         <button class="btn-secondary" (click)="openCalendarFor('coach')">🏋️ RDV Coach</button>
       </div>
@@ -148,45 +153,45 @@
           <div class="tracking-item"><span class="tr-icon">💧</span>
             <div class="tr-info">
               <p class="tr-label">Hydratation</p>
-              <p class="tr-val">1.8 <span>/ 2.5 L</span></p>
+              <p class="tr-val">{{ eauBue }} <span>/ {{ eauObjectif }} coupes</span></p>
             </div>
             <div class="tr-bar-wrap">
               <div class="tr-bar">
-                <div class="tr-fill water" style="width:72%"></div>
-              </div><span class="tr-pct">72%</span>
+                <div class="tr-fill water" [style.width]="eauPct + '%'"></div>
+              </div><span class="tr-pct">{{ eauPct }}%</span>
             </div>
           </div>
           <div class="tracking-item"><span class="tr-icon">🏃</span>
             <div class="tr-info">
               <p class="tr-label">Activité</p>
-              <p class="tr-val">3 <span>/ 5 séances</span></p>
+              <p class="tr-val">{{ exoFaits }} <span>/ {{ exoObjectif }} séances</span></p>
             </div>
             <div class="tr-bar-wrap">
               <div class="tr-bar">
-                <div class="tr-fill sport" style="width:60%"></div>
-              </div><span class="tr-pct">60%</span>
+                <div class="tr-fill sport" [style.width]="exoPct + '%'"></div>
+              </div><span class="tr-pct">{{ exoPct }}%</span>
             </div>
           </div>
-          <div class="tracking-item"><span class="tr-icon">🥗</span>
+          <div class="tracking-item"><span class="tr-icon">🔥</span>
             <div class="tr-info">
-              <p class="tr-label">Alimentation</p>
-              <p class="tr-val">78 <span>%</span></p>
+              <p class="tr-label">Calories</p>
+              <p class="tr-val">{{ calories }} <span>/ {{ caloriesObjectif }} kcal</span></p>
             </div>
             <div class="tr-bar-wrap">
               <div class="tr-bar">
-                <div class="tr-fill food" style="width:78%"></div>
-              </div><span class="tr-pct">78%</span>
+                <div class="tr-fill food" [style.width]="caloriesPct + '%'"></div>
+              </div><span class="tr-pct">{{ caloriesPct }}%</span>
             </div>
           </div>
           <div class="tracking-item"><span class="tr-icon">😴</span>
             <div class="tr-info">
               <p class="tr-label">Sommeil</p>
-              <p class="tr-val">7h <span>/ 8h</span></p>
+              <p class="tr-val">{{ sommeil }}h <span>/ {{ sommeilObjectif }}h</span></p>
             </div>
             <div class="tr-bar-wrap">
               <div class="tr-bar">
-                <div class="tr-fill sleep" style="width:87%"></div>
-              </div><span class="tr-pct">87%</span>
+                <div class="tr-fill sleep" [style.width]="sommeilPct + '%'"></div>
+              </div><span class="tr-pct">{{ sommeilPct }}%</span>
             </div>
           </div>
         </div>
@@ -611,6 +616,7 @@
       <app-chat
         [role]="'patient'"
         [userId]="userId"
+        [conversationType]="'PATIENT_NUTRITIONIST'"
         [patients]="nutritionnistes.map(n => ({ id: n.id, nom: (n.prenom ?? '') + ' ' + (n.nom ?? '') }))"
         [initialPatientId]="nutritionnisteSelectionne?.id ?? nutritionnisteId">
       </app-chat>
@@ -623,6 +629,7 @@
       <app-chat
         [role]="'patient'"
         [userId]="userId"
+        [conversationType]="'CLIENT_COACH'"
         [patients]="coaches.map(c => ({ id: c.id, nom: (c.prenom ?? '') + ' ' + (c.nom ?? '') }))"
         [initialPatientId]="coachSelectionne?.id ?? coachId">
       </app-chat>

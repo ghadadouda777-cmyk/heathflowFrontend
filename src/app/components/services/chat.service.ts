@@ -1,7 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, PLATFORM_ID, Inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, Subject, interval, Subscription } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Observable, Subject, BehaviorSubject } from 'rxjs';
+import { Client, IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 export interface ChatConversationDTO {
   id: number;
@@ -27,72 +29,93 @@ export interface ChatMessageDTO {
 export class ChatService {
 
   private readonly apiUrl = 'http://localhost:8084/api/chat';
+  private readonly wsUrl  = 'http://localhost:8084/ws';
 
-  /** Emits incoming messages (from polling) */
-  readonly messages$ = new Subject<ChatMessageDTO>();
+  private stompClient: Client | null = null;
+  private currentUserId: string | null = null;
 
-  /** Emits connection status */
-  readonly connected$ = new Subject<boolean>();
+  /** Emits every message received via WebSocket */
+  readonly incomingMessage$ = new Subject<ChatMessageDTO>();
 
-  private pollSub: Subscription | null = null;
-  private lastMessageCount = 0;
+  /** true = STOMP connected, false = disconnected */
+  readonly connected$ = new BehaviorSubject<boolean>(false);
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {}
 
   private getHeaders(): HttpHeaders {
+    if (!isPlatformBrowser(this.platformId)) return new HttpHeaders();
     const token = localStorage.getItem('token') ?? sessionStorage.getItem('token') ?? '';
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
 
-  // ── Connection (HTTP polling — WebSocket ready when packages installed) ───
+  // ── WebSocket connection ──────────────────────────────────────────────────
 
   connect(userId: string): void {
-    // Emit connected immediately — polling is always available
-    setTimeout(() => this.connected$.next(true), 0);
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (this.stompClient?.connected) return; // already connected
+
+    this.currentUserId = userId;
+
+    this.stompClient = new Client({
+      webSocketFactory: () => new SockJS(this.wsUrl) as any,
+      reconnectDelay: 5000,
+      onConnect: () => {
+        this.connected$.next(true);
+
+        // Subscribe to personal message queue
+        this.stompClient!.subscribe(
+          `/user/${userId}/queue/messages`,
+          (frame: IMessage) => {
+            try {
+              const msg: ChatMessageDTO = JSON.parse(frame.body);
+              this.incomingMessage$.next(msg);
+            } catch { /* ignore malformed frames */ }
+          }
+        );
+      },
+      onDisconnect: () => this.connected$.next(false),
+      onStompError:  () => this.connected$.next(false),
+    });
+
+    this.stompClient.activate();
   }
 
   disconnect(): void {
-    this.stopPolling();
+    this.stompClient?.deactivate();
+    this.stompClient = null;
     this.connected$.next(false);
   }
 
-  sendMessage(msg: Partial<ChatMessageDTO>): void {
-    // No-op for WebSocket path — use saveMessage() instead
+  /** Send a message via STOMP — server saves + pushes to receiver */
+  sendViaStomp(msg: Partial<ChatMessageDTO>): void {
+    if (this.stompClient?.connected) {
+      this.stompClient.publish({
+        destination: '/app/chat.send',
+        body: JSON.stringify(msg),
+      });
+    }
   }
 
-  get isWebSocketConnected(): boolean {
-    return false; // Always use HTTP fallback until packages are installed
-  }
-
-  // ── HTTP polling ──────────────────────────────────────────────────────────
-
-  startPolling(conversationId: number, intervalMs = 3000): void {
-    this.stopPolling();
-    this.lastMessageCount = 0;
-
-    this.pollSub = interval(intervalMs).pipe(
-      switchMap(() => this.getMessages(conversationId))
-    ).subscribe({
-      next: (msgs) => {
-        if (msgs.length > this.lastMessageCount) {
-          const newMsgs = msgs.slice(this.lastMessageCount);
-          newMsgs.forEach(m => this.messages$.next(m));
-          this.lastMessageCount = msgs.length;
-        }
-      },
-      error: () => {}
-    });
-  }
-
-  stopPolling(): void {
-    this.pollSub?.unsubscribe();
-    this.pollSub = null;
-    this.lastMessageCount = 0;
+  get isStompConnected(): boolean {
+    return this.stompClient?.connected ?? false;
   }
 
   // ── HTTP API ──────────────────────────────────────────────────────────────
 
-  getConversations(userId: string, role: 'nutritionist' | 'coach' | 'patient'): Observable<ChatConversationDTO[]> {
+  getConversations(
+    userId: string,
+    role: 'nutritionist' | 'coach' | 'patient',
+    conversationType?: string
+  ): Observable<ChatConversationDTO[]> {
+    if (role === 'patient' && conversationType) {
+      return this.http.get<ChatConversationDTO[]>(
+        `${this.apiUrl}/patient/${userId}/type/${conversationType}`,
+        { headers: this.getHeaders() }
+      );
+    }
     return this.http.get<ChatConversationDTO[]>(
       `${this.apiUrl}/${role}/${userId}`,
       { headers: this.getHeaders() }
@@ -114,6 +137,7 @@ export class ChatService {
     );
   }
 
+  /** HTTP fallback — used when STOMP is not connected */
   saveMessage(msg: Partial<ChatMessageDTO>): Observable<ChatMessageDTO> {
     return this.http.post<ChatMessageDTO>(
       `${this.apiUrl}/message`,

@@ -16,75 +16,75 @@
           <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="white" stroke-width="3">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
-        </div>Account
+        </div>Compte
       </div>
       <div class="step-sep"></div>
-      <div class="step active"><div class="step-num">2</div>Profile</div>
+      <div class="step active"><div class="step-num">2</div>Profil</div>
       <div class="step-sep"></div>
-      <div class="step"><div class="step-num">3</div>Done</div>
+      <div class="step"><div class="step-num">3</div>Terminé</div>
     </div>
 
-    <p class="form-title">Join HealthFlow</p>
-    <p class="form-sub">Create your account and start your wellness journey</p>
+    <p class="form-title">Rejoindre HealthFlow</p>
+    <p class="form-sub">Créez votre compte et commencez votre parcours bien-être</p>
 
-    <!-- Error message -->
+    <!-- Message d'erreur -->
     <div *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</div>
 
     <form (ngSubmit)="register()">
 
-      <p class="sec-label">Personal info</p>
+      <p class="sec-label">Informations personnelles</p>
       <div class="grid2">
         <div class="field">
-          <label>First name</label>
-          <input type="text" [(ngModel)]="formData.prenom" name="prenom" placeholder="First name" required>
+          <label>Prénom</label>
+          <input type="text" [(ngModel)]="formData.prenom" name="prenom" placeholder="Prénom" required>
         </div>
         <div class="field">
-          <label>Last name</label>
-          <input type="text" [(ngModel)]="formData.nom" name="nom" placeholder="Last name" required>
+          <label>Nom</label>
+          <input type="text" [(ngModel)]="formData.nom" name="nom" placeholder="Nom" required>
         </div>
       </div>
 
       <div class="field">
-        <label>Email address</label>
-        <input type="email" [(ngModel)]="formData.email" name="email" placeholder="bloomer@example.com" required>
+        <label>Adresse e-mail</label>
+        <input type="email" [(ngModel)]="formData.email" name="email" placeholder="bloomer@exemple.com" required>
       </div>
 
-      <p class="sec-label">Body & goals</p>
+      <p class="sec-label">Corps & objectifs</p>
       <div class="grid2">
         <div class="field">
-          <label>Age</label>
+          <label>Âge</label>
           <input type="number" [(ngModel)]="formData.age" name="age" placeholder="25">
         </div>
         <div class="field">
-          <label>Height (cm)</label>
+          <label>Taille (cm)</label>
           <input type="number" [(ngModel)]="formData.height" name="height" placeholder="170">
         </div>
       </div>
 
       <div class="grid2">
         <div class="field">
-          <label>Weight (kg)</label>
+          <label>Poids (kg)</label>
           <input type="number" [(ngModel)]="formData.weight" name="weight" placeholder="65">
         </div>
         <div class="field">
-          <label>Your goal</label>
+          <label>Votre objectif</label>
           <select [(ngModel)]="formData.goal" name="goal">
-            <option value="">Select your goal</option>
-            <option value="WEIGHT_LOSS">Weight Loss</option>
-            <option value="MUSCLE_GAIN">Muscle Gain</option>
-            <option value="MAINTAIN">Maintain Weight</option>
-            <option value="FITNESS">Improve Fitness</option>
-            <option value="HEALTHY_EATING">Healthy Eating Habits</option>
-            <option value="ENERGY">Increase Energy</option>
-            <option value="OTHER">Other</option>
+            <option value="">Sélectionnez votre objectif</option>
+            <option value="WEIGHT_LOSS">Perte de poids</option>
+            <option value="MUSCLE_GAIN">Prise de masse</option>
+            <option value="MAINTAIN">Maintien du poids</option>
+            <option value="FITNESS">Améliorer la forme</option>
+            <option value="HEALTHY_EATING">Habitudes alimentaires saines</option>
+            <option value="ENERGY">Augmenter l'énergie</option>
+            <option value="OTHER">Autre</option>
           </select>
         </div>
       </div>
 
       <div class="field">
-        <label>Lifestyle level</label>
+        <label>Niveau d'activité</label>
         <select [(ngModel)]="formData.lifestyleLevel" name="lifestyleLevel">
-          <option value="">Select your level</option>
+          <option value="">Sélectionnez votre niveau</option>
           <option value="DEBUTANT">Débutant</option>
           <option value="INTERMEDIAIRE">Intermédiaire</option>
           <option value="DISCIPLINE">Discipliné</option>
@@ -93,14 +93,14 @@
         </select>
       </div>
 
-      <p class="sec-label">Security</p>
+      <p class="sec-label">Sécurité</p>
       <div class="grid2">
         <div class="field">
-          <label>Password</label>
+          <label>Mot de passe</label>
           <input type="password" [(ngModel)]="formData.pwd" name="pwd" placeholder="••••••••" required>
         </div>
         <div class="field">
-          <label>Confirm password</label>
+          <label>Confirmer le mot de passe</label>
           <input type="password" [(ngModel)]="confirmPwd" name="confirmPwd" placeholder="••••••••">
         </div>
       </div>
@@ -108,18 +108,18 @@
       <div class="check-row">
         <input type="checkbox" [(ngModel)]="agreed" name="agreed" id="terms-b">
         <label for="terms-b">
-          I agree to the <span class="link">Terms and Conditions</span> and <span class="link">Privacy Policy</span>
+          J'accepte les <span class="link">Conditions d'utilisation</span> et la <span class="link">Politique de confidentialité</span>
         </label>
       </div>
 
       <button type="submit" class="btn-submit" [disabled]="!agreed || loading">
-        {{ loading ? 'Creating account...' : 'Create account' }}
+        {{ loading ? 'Création du compte...' : 'Créer un compte' }}
       </button>
     </form>
 
     <p class="login-line">
-      Already have an account?
-      <span class="link" [routerLink]="['/authentification','bloomer']">Log in</span>
+      Vous avez déjà un compte ?
+      <span class="link" [routerLink]="['/authentification','bloomer']">Se connecter</span>
     </p>
 
   </div>

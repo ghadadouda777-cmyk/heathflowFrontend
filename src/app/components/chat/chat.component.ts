@@ -1,11 +1,14 @@
 import {
   Component, OnInit, OnDestroy, AfterViewChecked,
   Input, OnChanges, SimpleChanges,
-  ViewChild, ElementRef, ChangeDetectorRef, NgZone
+  ViewChild, ElementRef, ChangeDetectorRef, NgZone,
+  PLATFORM_ID, Inject
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subscription, interval } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import {
   ChatService,
   ChatConversationDTO,
@@ -23,98 +26,77 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
 
   @ViewChild('messagesEl') private messagesEl!: ElementRef<HTMLDivElement>;
 
-  /** List of contacts to chat with: { id, nom } */
   @Input() patients: { id: any; nom: string }[] = [];
-
-  /** Pre-select a contact on init */
   @Input() initialPatientId: any = null;
-
-  /** 'nutritionist' | 'coach' | 'patient' */
   @Input() role: 'nutritionist' | 'coach' | 'patient' = 'nutritionist';
-
-  /** Current user ID */
   @Input() userId: any = null;
+  @Input() conversationType: string | undefined = undefined;
 
   // ── State ─────────────────────────────────────────────────────────────────
   conversations: ChatConversationDTO[] = [];
-  selectedConv: ChatConversationDTO | null = null;
-  messages: ChatMessageDTO[] = [];
+  selectedConv:  ChatConversationDTO | null = null;
+  messages:      ChatMessageDTO[] = [];
 
-  loadingConvs = false;
+  loadingConvs    = false;
   loadingMessages = false;
-  sending = false;
+  sending         = false;
 
-  newMessage = '';
+  newMessage  = '';
   searchQuery = '';
 
   showNewConvModal = false;
   newConvTargetId: any = null;
-  newConvError = '';
-  creatingConv = false;
+  newConvError  = '';
+  creatingConv  = false;
 
   wsStatus: 'connecting' | 'connected' | 'disconnected' = 'connecting';
 
-  private msgSub: Subscription | null = null;
-  private connSub: Subscription | null = null;
+  // ── Private state ─────────────────────────────────────────────────────────
+  private wsSub:    Subscription | null = null;  // WebSocket incoming messages
+  private connSub:  Subscription | null = null;  // connection status
+  private pollSub:  Subscription | null = null;  // HTTP polling fallback
   private shouldScroll = false;
+  /** Highest real message ID displayed — prevents duplicates */
+  private lastSeenId = 0;
 
   private readonly avatarColors = ['av-0', 'av-1', 'av-2', 'av-3', 'av-4'];
 
   constructor(
     private chatService: ChatService,
     private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
   ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
     if (!this.userId) {
-      // Fallback: read from localStorage
-      this.userId = localStorage.getItem('userId') ?? sessionStorage.getItem('userId') ?? '1';
+      this.userId = localStorage.getItem('userId') ?? sessionStorage.getItem('userId') ?? '';
     }
+    if (!this.userId) return;
 
     // Connect WebSocket
-    this.wsStatus = 'connecting';
     this.chatService.connect(String(this.userId));
 
-    // Listen for connection status
-    this.connSub = this.chatService.connected$.subscribe(connected => {
+    // Track connection status
+    this.connSub = this.chatService.connected$.subscribe(ok => {
       this.ngZone.run(() => {
-        this.wsStatus = connected ? 'connected' : 'disconnected';
+        this.wsStatus = ok ? 'connected' : 'disconnected';
         this.cdr.detectChanges();
       });
     });
 
-    // Listen for incoming messages
-    this.msgSub = this.chatService.messages$.subscribe(msg => {
-      this.ngZone.run(() => {
-        if (this.selectedConv && msg.conversationId === this.selectedConv.id) {
-          // Avoid duplicates
-          if (!this.messages.find(m => m.id === msg.id)) {
-            this.messages = [...this.messages, msg];
-            this.shouldScroll = true;
-            // Mark as read
-            this.chatService.markAsRead(this.selectedConv.id, String(this.userId)).subscribe();
-          }
-        }
-        // Update conversation preview
-        const conv = this.conversations.find(c => c.id === msg.conversationId);
-        if (conv) {
-          conv.lastMessage = msg.content;
-          conv.lastMessageAt = msg.sentAt;
-          if (!this.selectedConv || this.selectedConv.id !== msg.conversationId) {
-            conv.unreadCount = (conv.unreadCount || 0) + 1;
-          }
-        }
-        this.cdr.detectChanges();
-      });
+    // Handle incoming WebSocket messages
+    this.wsSub = this.chatService.incomingMessage$.subscribe(msg => {
+      this.ngZone.run(() => this.handleIncomingMessage(msg));
     });
 
-    // Load conversations
     this.loadConversations();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialPatientId'] && changes['initialPatientId'].currentValue) {
+    if (changes['initialPatientId']?.currentValue && this.userId && !this.loadingConvs) {
       this.openOrCreateConversation(changes['initialPatientId'].currentValue);
     }
   }
@@ -127,9 +109,42 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
   }
 
   ngOnDestroy(): void {
-    this.msgSub?.unsubscribe();
+    this.stopPolling();
+    this.wsSub?.unsubscribe();
     this.connSub?.unsubscribe();
-    this.chatService.disconnect();
+    // Don't disconnect the shared STOMP client — other components may use it
+  }
+
+  // ── Incoming message handler (WebSocket + polling) ────────────────────────
+
+  private handleIncomingMessage(msg: ChatMessageDTO): void {
+    // Ignore if not for the open conversation
+    if (!this.selectedConv || Number(msg.conversationId) !== Number(this.selectedConv.id)) {
+      // Update unread badge for other conversations
+      const conv = this.conversations.find(c => Number(c.id) === Number(msg.conversationId));
+      if (conv) {
+        conv.lastMessage   = msg.content;
+        conv.lastMessageAt = msg.sentAt;
+        conv.unreadCount   = (conv.unreadCount || 0) + 1;
+        this.cdr.detectChanges();
+      }
+      return;
+    }
+
+    // Avoid duplicates (real ID check)
+    if (msg.id > 0 && this.messages.find(m => m.id === msg.id)) return;
+
+    this.messages     = [...this.messages, msg];
+    this.shouldScroll = true;
+    if (msg.id > this.lastSeenId) this.lastSeenId = msg.id;
+
+    // Update conversation preview
+    const conv = this.conversations.find(c => Number(c.id) === Number(this.selectedConv!.id));
+    if (conv) { conv.lastMessage = msg.content; conv.lastMessageAt = msg.sentAt; }
+
+    // Mark as read
+    this.chatService.markAsRead(this.selectedConv.id, String(this.userId)).subscribe();
+    this.cdr.detectChanges();
   }
 
   // ── Conversations ─────────────────────────────────────────────────────────
@@ -140,15 +155,13 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
                   : this.role === 'coach'        ? 'coach'
                   : 'patient';
 
-    this.chatService.getConversations(String(this.userId), apiRole).subscribe({
+    this.chatService.getConversations(String(this.userId), apiRole, this.conversationType).subscribe({
       next: (data) => {
         this.ngZone.run(() => {
           this.conversations = data.sort((a, b) =>
             new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime()
           );
           this.loadingConvs = false;
-
-          // Auto-open if initialPatientId is set
           if (this.initialPatientId) {
             this.openOrCreateConversation(this.initialPatientId);
           }
@@ -156,54 +169,52 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
         });
       },
       error: () => {
-        this.ngZone.run(() => {
-          this.loadingConvs = false;
-          this.cdr.detectChanges();
-        });
+        this.ngZone.run(() => { this.loadingConvs = false; this.cdr.detectChanges(); });
       }
     });
   }
 
   selectConversation(conv: ChatConversationDTO): void {
-    this.selectedConv = conv;
-    this.messages = [];
+    this.selectedConv    = conv;
+    this.messages        = [];
     this.loadingMessages = true;
-    this.chatService.stopPolling();
+    this.stopPolling();
 
     this.chatService.getMessages(conv.id).subscribe({
       next: (msgs) => {
         this.ngZone.run(() => {
-          this.messages = msgs;
+          this.messages        = msgs;
           this.loadingMessages = false;
-          this.shouldScroll = true;
-          conv.unreadCount = 0;
+          this.shouldScroll    = true;
+          conv.unreadCount     = 0;
+          this.lastSeenId      = msgs.length > 0 ? Math.max(...msgs.map(m => m.id)) : 0;
           this.cdr.detectChanges();
+          // Start polling fallback (catches messages if WS drops)
+          this.startPollingFallback(conv.id);
         });
       },
       error: () => {
         this.ngZone.run(() => {
           this.loadingMessages = false;
+          this.lastSeenId      = 0;
           this.cdr.detectChanges();
+          this.startPollingFallback(conv.id);
         });
       }
     });
 
-    // Mark as read
     this.chatService.markAsRead(conv.id, String(this.userId)).subscribe();
-
-    // Start polling as fallback (in case WebSocket is not connected)
-    this.chatService.startPolling(conv.id, 3000);
   }
 
   openOrCreateConversation(targetId: any): void {
-    const type = this.role === 'coach' ? 'CLIENT_COACH' : 'PATIENT_NUTRITIONIST';
+    const type = this.conversationType
+      ?? (this.role === 'coach' ? 'CLIENT_COACH' : 'PATIENT_NUTRITIONIST');
     const p1 = String(this.userId);
     const p2 = String(targetId);
 
-    // Check if conversation already exists
     const existing = this.conversations.find(c =>
-      (c.participant1Id === p1 && c.participant2Id === p2) ||
-      (c.participant1Id === p2 && c.participant2Id === p1)
+      (String(c.participant1Id) === p1 && String(c.participant2Id) === p2) ||
+      (String(c.participant1Id) === p2 && String(c.participant2Id) === p1)
     );
 
     if (existing) {
@@ -211,12 +222,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
       return;
     }
 
-    // Create new
     this.chatService.createConversation(p1, p2, type).subscribe({
       next: (conv) => {
         this.ngZone.run(() => {
-          const idx = this.conversations.findIndex(c => c.id === conv.id);
-          if (idx === -1) this.conversations = [conv, ...this.conversations];
+          if (!this.conversations.find(c => c.id === conv.id)) {
+            this.conversations = [conv, ...this.conversations];
+          }
           this.selectConversation(conv);
           this.cdr.detectChanges();
         });
@@ -230,54 +241,70 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
   sendMessage(): void {
     if (!this.newMessage.trim() || !this.selectedConv || this.sending) return;
 
-    const content = this.newMessage.trim();
-    this.newMessage = '';
+    const content    = this.newMessage.trim();
+    this.newMessage  = '';
+    this.sending     = true;
 
     const receiverId = this.getOtherId(this.selectedConv);
+    const tempId     = -(Date.now()); // negative — never clashes with real DB IDs
 
-    const msgPayload: Partial<ChatMessageDTO> = {
-      conversationId: this.selectedConv.id,
-      senderId: String(this.userId),
-      receiverId: receiverId,
-      content: content
-    };
-
-    // Optimistic update
     const tempMsg: ChatMessageDTO = {
-      id: Date.now(),
-      conversationId: this.selectedConv.id,
-      senderId: String(this.userId),
-      receiverId: receiverId,
-      content: content,
-      sentAt: new Date().toISOString(),
-      isRead: false
+      id: tempId, conversationId: this.selectedConv.id,
+      senderId: String(this.userId), receiverId, content,
+      sentAt: new Date().toISOString(), isRead: false
     };
-    this.messages = [...this.messages, tempMsg];
+
+    this.messages     = [...this.messages, tempMsg];
     this.shouldScroll = true;
     this.cdr.detectChanges();
 
-    if (this.chatService.isWebSocketConnected) {
-      // Send via WebSocket
-      this.chatService.sendMessage(msgPayload);
-      // Update conversation preview
-      this.updateConvPreview(content);
-    } else {
-      // HTTP fallback
-      this.sending = true;
-      this.chatService.saveMessage(msgPayload).subscribe({
+    const payload: Partial<ChatMessageDTO> = {
+      conversationId: this.selectedConv.id,
+      senderId:       String(this.userId),
+      receiverId,
+      content
+    };
+
+    if (this.chatService.isStompConnected) {
+      // ── WebSocket path ──────────────────────────────────────────────────
+      // Server saves + pushes to receiver via /user/{receiverId}/queue/messages
+      // We also save via HTTP to get the real ID back for our own message
+      this.chatService.saveMessage(payload).subscribe({
         next: (saved) => {
           this.ngZone.run(() => {
-            this.messages = this.messages.map(m => m.id === tempMsg.id ? saved : m);
-            this.sending = false;
+            this.messages = this.messages.map(m => m.id === tempId ? saved : m);
+            this.sending  = false;
+            if (saved.id > this.lastSeenId) this.lastSeenId = saved.id;
             this.updateConvPreview(content);
             this.cdr.detectChanges();
           });
         },
         error: () => {
           this.ngZone.run(() => {
-            this.messages = this.messages.filter(m => m.id !== tempMsg.id);
+            this.messages   = this.messages.filter(m => m.id !== tempId);
             this.newMessage = content;
-            this.sending = false;
+            this.sending    = false;
+            this.cdr.detectChanges();
+          });
+        }
+      });
+    } else {
+      // ── HTTP fallback ───────────────────────────────────────────────────
+      this.chatService.saveMessage(payload).subscribe({
+        next: (saved) => {
+          this.ngZone.run(() => {
+            this.messages = this.messages.map(m => m.id === tempId ? saved : m);
+            this.sending  = false;
+            if (saved.id > this.lastSeenId) this.lastSeenId = saved.id;
+            this.updateConvPreview(content);
+            this.cdr.detectChanges();
+          });
+        },
+        error: () => {
+          this.ngZone.run(() => {
+            this.messages   = this.messages.filter(m => m.id !== tempId);
+            this.newMessage = content;
+            this.sending    = false;
             this.cdr.detectChanges();
           });
         }
@@ -286,34 +313,49 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
   }
 
   onEnter(event: KeyboardEvent): void {
-    if (!event.shiftKey) {
-      event.preventDefault();
-      this.sendMessage();
-    }
+    if (!event.shiftKey) { event.preventDefault(); this.sendMessage(); }
   }
 
   // ── New conversation modal ────────────────────────────────────────────────
 
   openNewConvModal(): void {
     this.showNewConvModal = true;
-    this.newConvTargetId = null;
-    this.newConvError = '';
+    this.newConvTargetId  = null;
+    this.newConvError     = '';
   }
 
-  closeNewConvModal(): void {
-    this.showNewConvModal = false;
-  }
+  closeNewConvModal(): void { this.showNewConvModal = false; }
 
   createConversation(): void {
-    if (!this.newConvTargetId) {
-      this.newConvError = 'Veuillez sélectionner un contact.';
-      return;
-    }
+    if (!this.newConvTargetId) { this.newConvError = 'Veuillez sélectionner un contact.'; return; }
     this.creatingConv = true;
     this.newConvError = '';
     this.openOrCreateConversation(this.newConvTargetId);
     this.closeNewConvModal();
     this.creatingConv = false;
+  }
+
+  // ── Polling fallback (catches messages when WS drops) ────────────────────
+
+  private startPollingFallback(conversationId: number): void {
+    this.stopPolling();
+    this.pollSub = interval(3000).pipe(
+      switchMap(() => this.chatService.getMessages(conversationId))
+    ).subscribe({
+      next: (msgs) => {
+        const newMsgs = msgs.filter(m => m.id > this.lastSeenId);
+        if (newMsgs.length === 0) return;
+        this.ngZone.run(() => {
+          newMsgs.forEach(m => this.handleIncomingMessage(m));
+        });
+      },
+      error: () => {}
+    });
+  }
+
+  private stopPolling(): void {
+    this.pollSub?.unsubscribe();
+    this.pollSub = null;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -328,14 +370,14 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
   }
 
   getOtherId(conv: ChatConversationDTO): string {
-    return conv.participant1Id === String(this.userId)
+    return String(conv.participant1Id) === String(this.userId)
       ? conv.participant2Id
       : conv.participant1Id;
   }
 
   getOtherName(conv: ChatConversationDTO): string {
     const otherId = this.getOtherId(conv);
-    const found = this.patients.find(p => String(p.id) === String(otherId));
+    const found   = this.patients.find(p => String(p.id) === String(otherId));
     return found ? found.nom : `Contact #${otherId}`;
   }
 
@@ -344,14 +386,14 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
   }
 
   avatarClass(convId: number): string {
-    return this.avatarColors[convId % this.avatarColors.length];
+    return this.avatarColors[Math.abs(convId) % this.avatarColors.length];
   }
 
   formatTime(dateStr: string | null): string {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '';
-    const now = new Date();
+    const now     = new Date();
     const isToday = d.toDateString() === now.toDateString();
     return isToday
       ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -359,13 +401,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked, OnCha
   }
 
   private updateConvPreview(content: string): void {
-    if (this.selectedConv) {
-      const conv = this.conversations.find(c => c.id === this.selectedConv!.id);
-      if (conv) {
-        conv.lastMessage = content;
-        conv.lastMessageAt = new Date().toISOString();
-      }
-    }
+    if (!this.selectedConv) return;
+    const conv = this.conversations.find(c => c.id === this.selectedConv!.id);
+    if (conv) { conv.lastMessage = content; conv.lastMessageAt = new Date().toISOString(); }
   }
 
   private scrollToBottom(): void {

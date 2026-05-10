@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
+import { NotificationBellComponent } from '../../../notification-bell/notification-bell.component';
 import {
   CoachAnalyticsItemDto,
   CoachConversationDto,
@@ -86,7 +87,7 @@ interface NotificationItem {
 
 @Component({
   selector: 'app-coach-dashboard',
-  imports: [CommonModule, DatePipe, FormsModule, ChatComponent],
+  imports: [CommonModule, DatePipe, FormsModule, ChatComponent, NotificationBellComponent],
   templateUrl: './coach-dashboard.html',
   styleUrl: './coach-dashboard.css',
 })
@@ -94,6 +95,10 @@ export class CoachDashboard implements OnInit {
   coachName = 'Coach';
   get coachRole(): string {
     return this.coachProfile?.coachSpecialite || 'Coach';
+  }
+
+  get coachInitial(): string {
+    return (this.coachProfile?.prenom || this.coachName || 'C').charAt(0).toUpperCase();
   }
   readonly searchPlaceholder = 'Search clients, plans, exercises...';
   readonly apiErrorDefault = 'Error loading dashboard data.';
@@ -151,17 +156,22 @@ export class CoachDashboard implements OnInit {
     );
   }
 
-  onSearch(query: string): void {
+  navigateSearch(query: string): void {
     if (!query.trim()) return;
     // Auto-navigate to the most relevant tab
     const q = query.toLowerCase();
-    const hasClient  = this.clientsWithConfirmedRdv.some(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q));
-    const hasPlan    = this.workoutPlans.some(p => p.nom.toLowerCase().includes(q));
+    const hasClient   = this.clientsWithConfirmedRdv.some(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q));
+    const hasPlan     = this.workoutPlans.some(p => p.nom.toLowerCase().includes(q));
     const hasExercise = this.exercises.some(e => e.nom.toLowerCase().includes(q) || e.categorie.toLowerCase().includes(q));
 
     if (hasClient)   { this.activeTab = 'Clients'; return; }
     if (hasPlan)     { this.activeTab = 'Workout Plans'; return; }
     if (hasExercise) { this.activeTab = 'Exercises'; return; }
+  }
+
+  onSearch(query: string): void {
+    this.searchQuery = query;
+    this.navigateSearch(query);
   }
 
   // Modal states
@@ -390,19 +400,54 @@ export class CoachDashboard implements OnInit {
    * the nutritionist's patientsConfirmes pattern.
    */
   get confirmedClients(): { id: any; nom: string }[] {
-    return this.rdvConfirmes.map(r => ({
-      id: r.userId,
-      nom: r.patientNom || 'Client #' + r.userId,
-    }));
+    const seen = new Set<string>();
+    return this.rdvConfirmes
+      .filter(r => {
+        const key = String(r.userId);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map(r => ({
+        id: r.userId,
+        nom: r.patientNom || 'Client #' + r.userId,
+      }));
   }
 
   /**
    * Full ClientItem list filtered to only those with a confirmed RDV.
    * Used in the Clients tab so the coach only sees clients who booked.
    */
+  /**
+   * All clients with confirmed RDV — primary source is rdvConfirmes (always available).
+   * Enriched with full data from this.clients (API) when available.
+   * Deduplicated by userId.
+   */
   get clientsWithConfirmedRdv(): ClientItem[] {
-    const confirmedIds = new Set(this.rdvConfirmes.map(r => String(r.userId)));
-    return this.clients.filter(c => confirmedIds.has(String(c.id)));
+    const seen = new Set<string>();
+    const result: ClientItem[] = [];
+
+    for (const rdv of this.rdvConfirmes) {
+      const key = String(rdv.userId);
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      // Try to find enriched data from API
+      const enriched = this.clients.find(c => String(c.id) === key);
+      if (enriched) {
+        result.push(enriched);
+      } else {
+        // Fallback: build from RDV data
+        result.push({
+          id: rdv.userId,
+          name: rdv.patientNom || 'Client #' + rdv.userId,
+          email: '',
+          assignedPlans: [],
+          progressStatus: 'Confirmed'
+        });
+      }
+    }
+    return result;
   }
 
   openConversation(userId: any): void {

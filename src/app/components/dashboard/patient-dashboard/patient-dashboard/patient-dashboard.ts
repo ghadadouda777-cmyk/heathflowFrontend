@@ -8,11 +8,16 @@ import { Subscription } from 'rxjs';
 import { RendezVousService } from '../../../services/rendez-vous';
 import { ConsultationService } from '../../../services/consultation';
 import { ChatComponent } from '../../../chat/chat.component';
+import { NotificationBellComponent } from '../../../notification-bell/notification-bell.component';
 
 import { RendezVous } from '../../../../interfaces/rendez-vous';
 import { Consultation } from '../../../../interfaces/consultation';
 import { Patient, PatientService } from '../../../services/patient';
 import { PatientInfo } from '../../../../interfaces/PatientInfo';
+import { SuiviService } from '../../../../services/suivi';
+import { ObjectifService } from '../../../../services/objectif-personnel';
+import { SuiviQuotidien } from '../../../../interfaces/suivi-quotidien';
+import { ObjectifPersonnel } from '../../../../interfaces/objectif-personnel';
 
 interface RepasJour {
   id: number;
@@ -72,7 +77,7 @@ export type Section =
 @Component({
   selector: 'app-patient-dashboard',
   standalone: true,
-  imports: [CommonModule, DatePipe, DecimalPipe, FormsModule, ChatComponent],
+  imports: [CommonModule, DatePipe, DecimalPipe, FormsModule, ChatComponent, NotificationBellComponent],
   templateUrl: './patient-dashboard.html',
   styleUrls: ['./patient-dashboard.css']
 })
@@ -168,6 +173,27 @@ export class PatientDashboard implements OnInit, OnDestroy {
 
   private pollSub: Subscription | null = null;
 
+  // ── Suivi Quotidien ───────────────────────────────────────────────────────
+  suivi: SuiviQuotidien | null = null;
+  objectifs: ObjectifPersonnel | null = null;
+
+  // Valeurs affichées (avec fallbacks)
+  get eauBue(): number       { return this.suivi?.nb_coupes_bues      ?? 0; }
+  get eauObjectif(): number  { return this.objectifs?.objectif_coupes_eau ?? 8; }
+  get eauPct(): number       { return this.eauObjectif > 0 ? Math.min(100, Math.round((this.eauBue / this.eauObjectif) * 100)) : 0; }
+
+  get exoFaits(): number     { return this.suivi?.nb_exercices_faites  ?? 0; }
+  get exoObjectif(): number  { return this.objectifs?.objectif_exercices_semaine ?? 5; }
+  get exoPct(): number       { return this.exoObjectif > 0 ? Math.min(100, Math.round((this.exoFaits / this.exoObjectif) * 100)) : 0; }
+
+  get sommeil(): number      { return this.suivi?.nb_heures_sommeil    ?? 0; }
+  get sommeilObjectif(): number { return this.objectifs?.objectif_heures_sommeil ?? 8; }
+  get sommeilPct(): number   { return this.sommeilObjectif > 0 ? Math.min(100, Math.round((this.sommeil / this.sommeilObjectif) * 100)) : 0; }
+
+  get calories(): number     { return this.suivi?.calories_consommes   ?? 0; }
+  get caloriesObjectif(): number { return this.objectifs?.objectif_calories ?? 2000; }
+  get caloriesPct(): number  { return this.caloriesObjectif > 0 ? Math.min(100, Math.round((this.calories / this.caloriesObjectif) * 100)) : 0; }
+
   private platformId = inject(PLATFORM_ID);
 
   constructor(
@@ -175,7 +201,9 @@ export class PatientDashboard implements OnInit, OnDestroy {
     private consultService: ConsultationService,
     private http: HttpClient,
     private patientService: PatientService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private suiviService: SuiviService,
+    private objectifService: ObjectifService
   ) { }
 
   private getHeaders(): HttpHeaders {
@@ -219,6 +247,21 @@ export class PatientDashboard implements OnInit, OnDestroy {
     this.loadProgramme();
     this.loadNutritionnistes();
     this.loadCoaches();
+    this.loadSuivi();
+  }
+
+  loadSuivi(): void {
+    if (!this.userId) return;
+
+    this.suiviService.getSuiviDuJour(this.userId).subscribe({
+      next: (data) => { this.suivi = data; },
+      error: () => { this.suivi = null; }
+    });
+
+    this.objectifService.getObjectif(this.userId).subscribe({
+      next: (data) => { this.objectifs = data; },
+      error: () => { this.objectifs = null; }
+    });
   }
 
   loadProfile(): void {

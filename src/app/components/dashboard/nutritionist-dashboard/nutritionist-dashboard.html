@@ -374,7 +374,10 @@
           </div>
         </div>
         <div class="header-right">
-          <div class="notif-btn">🔔<span class="notif-dot"></span></div>
+          <app-notification-bell
+            [lang]="'fr'"
+            [userId]="nutritionnisteId">
+          </app-notification-bell>
           <button class="btn-new-client">+ Nouveau client</button>
           <div class="avatar-icon">{{ (profileForm.prenom[0] || '') + (profileForm.nom[0] || '') }}</div>
         </div>

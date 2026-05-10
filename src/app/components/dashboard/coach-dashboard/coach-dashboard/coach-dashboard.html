@@ -43,9 +43,12 @@
         }
       </div>
       <div class="header-actions">
-        <button class="icon-btn" aria-label="Notifications">🔔</button>
+        <app-notification-bell
+          [lang]="'en'"
+          [userId]="coachIdentity?.coachId ?? null">
+        </app-notification-bell>
         <div class="user-chip">
-          <div class="avatar">{{ (coachProfile?.prenom || coachName).charAt(0).toUpperCase() }}</div>
+          <div class="avatar">{{ coachInitial }}</div>
           <div>
             <p class="user-name">{{ coachName }}</p>
             <p class="user-role">{{ coachRole }}</p>

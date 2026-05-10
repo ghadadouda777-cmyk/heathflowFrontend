@@ -10,25 +10,16 @@ import {
 
 import { routes } from './app.routes';
 
-// Intercepteur sécurisé SSR — localStorage uniquement côté navigateur
+// JWT interceptor — browser only
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-
   const platformId = inject(PLATFORM_ID);
+  const isBrowser  = isPlatformBrowser(platformId);
 
-
-  const isBrowser = isPlatformBrowser(platformId);
-  if (req.url.includes('/api/auth/')) {
-    return next(req);
-  }
+  if (req.url.includes('/api/auth/')) return next(req);
 
   const token = isBrowser ? localStorage.getItem('token') : null;
-
-
   if (token) {
-    const cloned = req.clone({
-      setHeaders: { Authorization: `Bearer ${token}` }
-    });
-    return next(cloned);
+    return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
   }
   return next(req);
 };
@@ -39,6 +30,6 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withFetch(),
       withInterceptors([jwtInterceptor])
-    )
+    ),
   ]
 };

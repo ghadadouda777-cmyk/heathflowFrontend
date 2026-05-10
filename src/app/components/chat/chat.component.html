@@ -59,10 +59,10 @@
     @if (!selectedConv) {
       <div class="chat-thread-empty">
         <div class="chat-thread-empty-icon">💬</div>
-        <h3>{{ role === 'patient' ? 'Sélectionnez une conversation' : 'Select a conversation' }}</h3>
-        <p>{{ role === 'patient' ? 'Choisissez à gauche ou démarrez une nouvelle.' : 'Choose from the left or start a new one.' }}</p>
+        <h3>{{ role === 'patient' ? 'Sélectionnez une conversation' : 'Sélectionnez une conversation' }}</h3>
+        <p>{{ role === 'patient' ? 'Choisissez à gauche ou démarrez une nouvelle.' : 'Choisissez à gauche ou démarrez une nouvelle.' }}</p>
         <button class="chat-start-btn" (click)="openNewConvModal()">
-          {{ role === 'patient' ? '+ Nouvelle conversation' : '+ New conversation' }}
+          + Nouvelle conversation
         </button>
       </div>
     } @else {
@@ -109,7 +109,7 @@
         }
         @if (messages.length === 0 && !loadingMessages) {
           <div class="chat-no-messages">
-            {{ role === 'patient' ? 'Aucun message. Commencez la conversation !' : 'No messages yet. Start the conversation!' }}
+            Aucun message. Commencez la conversation !
           </div>
         }
       </div>
@@ -118,7 +118,7 @@
       <div class="chat-input-bar">
         <textarea
           class="chat-input"
-          [placeholder]="role === 'patient' ? 'Écrire un message…' : 'Write a message…'"
+          placeholder="Écrire un message…"
           [(ngModel)]="newMessage"
           (keydown.enter)="onEnter($any($event))"
           rows="1"
@@ -141,7 +141,7 @@
   <div class="chat-modal-overlay" (click)="closeNewConvModal()">
     <div class="chat-modal" (click)="$event.stopPropagation()">
       <div class="chat-modal-header">
-        <h3>{{ role === 'patient' ? 'Nouvelle conversation' : 'New conversation' }}</h3>
+        <h3>Nouvelle conversation</h3>
         <button class="chat-modal-close" (click)="closeNewConvModal()">✕</button>
       </div>
       <div class="chat-modal-body">
@@ -149,7 +149,7 @@
           <div class="chat-alert-error">⚠ {{ newConvError }}</div>
         }
         <div class="chat-form-group">
-          <label>{{ role === 'patient' ? 'Praticien' : 'Client / Patient' }}</label>
+          <label>Contact</label>
           @if (patients && patients.length > 0) {
             <select [(ngModel)]="newConvTargetId" class="chat-select">
               <option [ngValue]="null" disabled>— Sélectionner —</option>

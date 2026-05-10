@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { ChatComponent } from '../../chat/chat.component';
+import { NotificationBellComponent } from '../../notification-bell/notification-bell.component';
 import { RendezVous } from '../../../interfaces/rendez-vous';
 import { Consultation } from '../../../interfaces/consultation';
 import { RendezVousService } from '../../services/rendez-vous';
@@ -43,7 +44,7 @@ export interface UpcomingRdv extends RendezVous {
 @Component({
   selector: 'app-nutritionist-dashboard',
   standalone: true,
-  imports: [CommonModule, DatePipe, FormsModule, ChatComponent],
+  imports: [CommonModule, DatePipe, FormsModule, ChatComponent, NotificationBellComponent],
   templateUrl: './nutritionist-dashboard.html',
   styleUrls: ['./nutritionist-dashboard.css']
 })
