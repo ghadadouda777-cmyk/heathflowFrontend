@@ -2,12 +2,14 @@
   display: flex;
   height: 100%;
   min-height: 0;
+  width: 100%;
 }
 
 .chat-shell {
   display: grid;
   grid-template-columns: 300px 1fr;
-  height: 100%;
+  width: 100%;
+  height: calc(100vh - 40px);
   min-height: 0;
   background: #fff;
   border-radius: 16px;
@@ -15,7 +17,6 @@
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(17,24,39,0.06);
 }
-
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .chat-sidebar {
   display: flex;

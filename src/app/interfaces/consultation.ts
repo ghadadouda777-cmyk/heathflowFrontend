@@ -1,8 +1,8 @@
 export interface Consultation {
   id: number;
   rendezVousId: number;
-  userId: number;
-  nutritionnisteId: number;
+  userId: any;
+  nutritionnisteId: any;
   coachId?: number;
   poids: number;
   taille: number;

@@ -1,8 +1,4 @@
 
-/* ═══════════════════════════════════════════════════════════
-   NUTRITIONIST DASHBOARD — CSS
-   ═══════════════════════════════════════════════════════════ */
-
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@500;600&display=swap');
 
 /* ── TOKENS ───────────────────────────────────────────────── */
@@ -2843,4 +2839,73 @@
 [data-theme='dark'] .client-item,
 [data-theme='dark'] .consultation-row {
   border-color: var(--border-light);
+}
+.subscription-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.sub-plan-card {
+  border: 2px solid #fde8f0;
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+  position: relative;
+}
+
+.sub-plan-card:hover {
+  border-color: #be185d;
+  box-shadow: 0 4px 16px rgba(190, 24, 93, 0.12);
+  transform: translateY(-2px);
+}
+
+.sub-plan-card.current {
+  border-color: #be185d;
+  background: #fdf2f8;
+}
+
+.sub-plan-card.featured {
+  border-color: #be185d;
+  background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+}
+
+.sub-plan-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9d174d;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.sub-plan-price {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #be185d;
+}
+
+.sub-plan-price span {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sub-plan-per {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.sub-plan-badge {
+  margin-top: 12px;
+  display: inline-block;
+  background: #be185d;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
 }

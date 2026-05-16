@@ -1,6 +1,5 @@
 <div class="dashboard-wrapper">
 
-  <!-- ═══ SIDENAV ═══ -->
   <nav class="sidenav">
     <div class="nav-logo">
       <span class="nav-logo-icon">🥗</span>
@@ -14,10 +13,10 @@
       <span class="nav-icon">💬</span>
       <span class="nav-label">Conversations</span>
     </div>
-    <div class="nav-item" [class.active]="activePage==='calendar'" (click)="setPage('calendar')">
-      <span class="nav-icon">📅</span>
-      <span class="nav-label">Agenda</span>
-    </div>
+    <div class="nav-item" [class.active]="activePage==='abonnement'" (click)="setPage('abonnement')">
+  <span class="nav-icon">💳</span>
+  <span class="nav-label">Abonnement</span>
+</div>
     <div class="nav-item" [class.active]="activePage==='clients'" (click)="setPage('clients')">
       <span class="nav-icon">👥</span>
       <span class="nav-label">Clients</span>
@@ -40,12 +39,10 @@
     </div>
   </nav>
 
-  <!-- ═══ MAIN CONTENT ═══ -->
   <div class="main-content">
 
-    <!-- ═══ PAGE CONVERSATIONS ═══ -->
     @if (activePage === 'conv') {
-      <div style="height:100%;display:flex;flex-direction:column;">
+      <div style="height:calc(100vh - 40px);display:flex;flex-direction:column;width:100%;">
         <app-chat
           [patients]="patientsConfirmes"
           [initialPatientId]="selectedPatientId"
@@ -54,6 +51,60 @@
         </app-chat>
       </div>
     }
+    @if (activePage === 'abonnement') {
+  <div style="padding: 32px;">
+    <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 8px;">💳 Abonnement</h2>
+    <p style="color: #6b7280; margin-bottom: 28px;">Choisissez ou changez votre formule.</p>
+
+    <div class="subscription-plans-grid">
+
+      <div class="sub-plan-card"
+           [class.current]="(profileAbonnement.typeAbonnement || 'MOIS_1') === 'MOIS_1'"
+           (click)="changePlan('MOIS_1')">
+        <div class="sub-plan-label">1 MOIS</div>
+        <div class="sub-plan-price">300 <span>DT</span></div>
+        <div class="sub-plan-per">300 DT / mois</div>
+        @if ((profileAbonnement.typeAbonnement || 'MOIS_1') === 'MOIS_1') {
+          <div class="sub-plan-badge">✓ Actuel</div>
+        }
+      </div>
+
+      <div class="sub-plan-card"
+           [class.current]="profileAbonnement.typeAbonnement === 'MOIS_3'"
+           (click)="changePlan('MOIS_3')">
+        <div class="sub-plan-label">3 MOIS</div>
+        <div class="sub-plan-price">750 <span>DT</span></div>
+        <div class="sub-plan-per">250 DT / mois</div>
+        @if (profileAbonnement.typeAbonnement === 'MOIS_3') {
+          <div class="sub-plan-badge">✓ Actuel</div>
+        }
+      </div>
+
+      <div class="sub-plan-card"
+           [class.current]="profileAbonnement.typeAbonnement === 'MOIS_6'"
+           (click)="changePlan('MOIS_6')">
+        <div class="sub-plan-label">6 MOIS</div>
+        <div class="sub-plan-price">1320 <span>DT</span></div>
+        <div class="sub-plan-per">220 DT / mois</div>
+        @if (profileAbonnement.typeAbonnement === 'MOIS_6') {
+          <div class="sub-plan-badge">✓ Actuel</div>
+        }
+      </div>
+
+      <div class="sub-plan-card featured"
+           [class.current]="profileAbonnement.typeAbonnement === 'AN_1'"
+           (click)="changePlan('AN_1')">
+        <div class="sub-plan-label">1 AN ⭐</div>
+        <div class="sub-plan-price">2160 <span>DT</span></div>
+        <div class="sub-plan-per">180 DT / mois</div>
+        @if (profileAbonnement.typeAbonnement === 'AN_1') {
+          <div class="sub-plan-badge">✓ Actuel</div>
+        }
+      </div>
+
+    </div>
+  </div>
+}
 @if (activePage === 'clients') {
   <div style="padding: 32px;">
     <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 20px;">Clients</h2>
@@ -88,7 +139,6 @@
       >
     </div>
 
-    <!-- Liste rapports -->
     <div style="background: #fff; border-radius: 12px; border: 1px solid #fde8f0; overflow: hidden;">
       @for (item of filteredRapports; track item.rdv.id) {
         <div
@@ -118,7 +168,6 @@
     </div>
   </div>
 }
-    <!-- ═══ PAGE PARAMÈTRES ═══ -->
     @if (activePage === 'params') {
       <div class="params-wrapper">
         <div class="params-header">
@@ -306,7 +355,6 @@
     <h3 class="params-section-title">Préférences d'affichage</h3>
     <p class="params-section-desc">Personnalisez l'interface selon vos préférences.</p>
 
-    <!-- LANGUE -->
     <div class="pref-block">
       <p class="pref-block-label" style="margin-bottom:12px;">🌐 Langue de l'interface</p>
       <div style="display:flex; gap:10px;">
@@ -328,7 +376,6 @@
       </div>
     </div>
 
-    <!-- THEME -->
     <div class="pref-block" style="margin-top:24px;">
       <p class="pref-block-label" style="margin-bottom:12px;">🎨 Thème de l'interface</p>
       <div style="display:flex; gap:10px;">
@@ -361,368 +408,268 @@
       </div>
     }
 
-    <!-- ═══ PAGE DASHBOARD ═══ -->
-    @if (activePage === 'dashboard') {
+ @if (activePage === 'dashboard') {
 
-      <!-- HEADER -->
-      <div class="dashboard-header">
-        <div class="header-left">
-          <div class="brand-mark">🥗</div>
-          <div>
-            <h1 class="dashboard-title">Nutritionist <span>Dashboard</span></h1>
-            <p class="welcome-text">Bienvenue, Dr. {{ profileForm.prenom }} {{ profileForm.nom }}</p>
-          </div>
-        </div>
-        <div class="header-right">
-          <app-notification-bell
-            [lang]="'fr'"
-            [userId]="nutritionnisteId">
-          </app-notification-bell>
-          <button class="btn-new-client">+ Nouveau client</button>
-          <div class="avatar-icon">{{ (profileForm.prenom[0] || '') + (profileForm.nom[0] || '') }}</div>
-        </div>
+  <div class="dashboard-header">
+    <div class="header-left">
+      <div class="brand-mark">🥗</div>
+      <div>
+        <h1 class="dashboard-title">Nutritionist <span>Dashboard</span></h1>
+        <p class="welcome-text">Bienvenue, Dr. {{ profileForm.prenom }} {{ profileForm.nom }}</p>
       </div>
+    </div>
+    <div class="header-right">
+      <app-notification-bell [lang]="'fr'" [userId]="nutritionnisteId"></app-notification-bell>
+      <div class="avatar-icon">{{ (profileForm.prenom[0] || '') + (profileForm.nom[0] || '') }}</div>
+    </div>
+  </div>
 
-      <!-- STATS -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon si-sage">👥</div>
-          <div class="stat-info">
-            <div class="stat-value v-sage">{{ rendezVousConfirmes.length }}</div>
-            <p class="stat-label">Total clients</p>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon si-plum">📅</div>
-          <div class="stat-info">
-            <div class="stat-value v-plum">{{ rendezVousConfirmes.length }}</div>
-            <p class="stat-label">RDV confirmés</p>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon si-amber">⏳</div>
-          <div class="stat-info">
-            <div class="stat-value v-amber">{{ rendezVousEnAttente.length }}</div>
-            <p class="stat-label">En attente</p>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon si-rose">✗</div>
-          <div class="stat-info">
-            <div class="stat-value v-rose">{{ rendezVousRefuses.length }}</div>
-            <p class="stat-label">Refusés</p>
-          </div>
-        </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon si-sage">👥</div>
+      <div class="stat-info">
+        <div class="stat-value v-sage">{{ rendezVousConfirmes.length }}</div>
+        <p class="stat-label">Total clients</p>
+        <p style="font-size:10px;color:#3B6D11;margin-top:4px;">↑ actifs ce mois</p>
       </div>
-<!-- MAIN GRID -->
-      <div class="main-grid">
-        <div class="left-column">
-
-          <!-- CARD RDV -->
-          <div class="card">
-            <div class="card-header">
-              <h2>Rendez-vous du jour</h2>
-              <a class="view-all">Voir tout</a>
-            </div>
-            <div class="tabs">
-              <button type="button" [class.active]="activeTab === 'attente'" (click)="setTab('attente')">
-                En attente ({{ rendezVousEnAttente.length }})
-              </button>
-              <button type="button" [class.active]="activeTab === 'confirme'" (click)="setTab('confirme')">
-                Confirmés ({{ rendezVousConfirmes.length }})
-              </button>
-              <button type="button" [class.active]="activeTab === 'refuse'" (click)="setTab('refuse')">
-                Refusés ({{ rendezVousRefuses.length }})
-              </button>
-            </div>
-            @if (activeTab === 'attente') {
-              @for (rdv of rendezVousEnAttente; track rdv.id) {
-                <div class="rdv-item">
-                  <div class="rdv-time-bubble">{{ rdv.dateHeure | date:'HH' }}h</div>
-                  <div class="rdv-info">
-                    <p class="rdv-name">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</p>
-                    <p class="rdv-type">{{ rdv.motif }}</p>
-                  </div>
-                  <div class="rdv-actions">
-                    <button type="button" class="btn-accept" (click)="accepter(rdv.id)">✓ Accepter</button>
-                    <button type="button" class="btn-refuse" (click)="refuser(rdv.id)">✗ Refuser</button>
-                  </div>
-                  <div class="phone-btn">📞</div>
-                </div>
-              }
-              @if (rendezVousEnAttente.length === 0) {
-                <p class="empty-state">Aucun rendez-vous en attente</p>
-              }
-            }
-            @if (activeTab === 'confirme') {
-              @for (rdv of rendezVousConfirmes; track rdv.id) {
-                <div class="rdv-item">
-                  <div class="rdv-time-bubble">{{ rdv.dateHeure | date:'HH' }}h</div>
-                  <div class="rdv-info">
-                    <p class="rdv-name">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</p>
-                    <p class="rdv-type">{{ rdv.motif }}</p>
-                  </div>
-                  <span class="badge-status confirmed">confirmé</span>
-                  <div class="phone-btn pink">📞</div>
-                </div>
-              }
-              @if (rendezVousConfirmes.length === 0) {
-                <p class="empty-state">Aucun rendez-vous confirmé</p>
-              }
-            }
-            @if (activeTab === 'refuse') {
-              @for (rdv of rendezVousRefuses; track rdv.id) {
-                <div class="rdv-item">
-                  <div class="rdv-time-bubble grey">{{ rdv.dateHeure | date:'HH' }}h</div>
-                  <div class="rdv-info">
-                    <p class="rdv-name">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</p>
-                    <p class="rdv-type">{{ rdv.motif }}</p>
-                  </div>
-                  <span class="badge-status refused">refusé</span>
-                  <div class="phone-btn grey">📞</div>
-                </div>
-              }
-              @if (rendezVousRefuses.length === 0) {
-                <p class="empty-state">Aucun rendez-vous refusé</p>
-              }
-            }
-          </div>
-
-          <!-- CARD CLIENTS RECENTS -->
-          <div class="card">
-            @for (c of consultations; track c.id) {
-              <div class="client-item" (click)="openConsultation(c.id)">
-                <div class="client-row">
-                  <div class="client-avatar">{{ getInitials(c.userId) }}</div>
-                  <div class="client-meta">
-                    <p class="client-name">Patient #{{ c.userId }}</p>
-                    <p class="client-goal">{{ c.objectif }}</p>
-                  </div>
-                  <span class="goal-tag">IMC {{ c.imc | number:'1.1-1' }}</span>
-                </div>
-                <div class="progress-bar">
-                  <div class="progress-fill" [style.width]="'60%'"></div>
-                </div>
-                <div class="progress-meta">
-                  <span>Progression</span><span>60%</span>
-                </div>
-                <p class="last-visit">{{ c.dateConsultation | date:'dd/MM/yyyy' }}</p>
-              </div>
-            }
-          </div>
-
-          <!-- QUICK ACTIONS -->
-          <div class="quick-actions-grid">
-            <div class="action-card">
-              <div class="action-icon si-sage">📊</div>
-              <div class="action-body"><h3>Plan alimentaire</h3><p>Créer un plan personnalisé</p></div>
-            </div>
-            <div class="action-card">
-              <div class="action-icon si-plum">📝</div>
-              <div class="action-body"><h3>Rapports clients</h3><p>Analyses et progression</p></div>
-            </div>
-            <div class="action-card">
-              <div class="action-icon si-amber">📚</div>
-              <div class="action-body"><h3>Ressources</h3><p>Guides et recettes</p></div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- SIDEBAR DROITE -->
-        <div class="sidebar">
-          <div class="card">
-            <div class="card-header">
-              <h2>Cette semaine</h2>
-              <a class="view-all">Agenda</a>
-            </div>
-            @for (rdv of upcomingRdv; track rdv.id) {
-              <div class="upcoming-item">
-                <div class="up-dot" [class]="rdv.dotColor"></div>
-                <div class="up-info">
-                  <div class="up-name">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</div>
-                  <div class="up-time">{{ rdv.dateHeure | date:'EEE · HH:mm' }}</div>
-                </div>
-                <span class="up-type" [class]="rdv.badgeColor">{{ rdv.motif }}</span>
-              </div>
-            }
-            @if (upcomingRdv.length === 0) {
-              <p class="empty-state">Aucun RDV cette semaine</p>
-            }
-          </div>
-        </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-plum">📅</div>
+      <div class="stat-info">
+        <div class="stat-value v-plum">{{ rendezVousConfirmes.length }}</div>
+        <p class="stat-label">RDV confirmés</p>
+        <p style="font-size:10px;color:#534AB7;margin-top:4px;">↑ cette semaine</p>
       </div>
-      <!-- FIN MAIN GRID -->
-
-      <!-- WIDGETS ROW -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
-
-        <!-- PROCHAIN RDV -->
-        <div class="card" style="padding: 20px;">
-          <div class="card-header" style="margin-bottom: 12px;">
-            <h2>⏰ Prochain rendez-vous</h2>
-          </div>
-          @if (upcomingRdv.length > 0) {
-            <div style="display: flex; align-items: center; gap: 16px;">
-              <div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #fbcfe8, #f472b6); color: #9d174d; font-weight: 700; font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                {{ getPatientInitials(upcomingRdv[0]) }}
-              </div>
-              <div style="flex: 1;">
-                <p style="margin: 0; font-weight: 700; font-size: 1rem;">{{ upcomingRdv[0].patientNom || 'Patient #' + upcomingRdv[0].userId }}</p>
-                <p style="margin: 4px 0 0; font-size: 0.82rem; color: #6b7280;">{{ upcomingRdv[0].motif }}</p>
-                <p style="margin: 4px 0 0; font-size: 0.82rem; color: #be185d; font-weight: 600;">
-                  📅 {{ upcomingRdv[0].dateHeure | date:'EEEE dd MMM · HH:mm' }}
-                </p>
-              </div>
-            </div>
-            @if (upcomingRdv.length > 1) {
-              <p style="margin: 12px 0 0; font-size: 0.78rem; color: #9ca3af; text-align: center;">
-                + {{ upcomingRdv.length - 1 }} autre(s) rendez-vous à venir
-              </p>
-            }
-          } @else {
-            <p style="text-align: center; color: #9ca3af; padding: 16px 0;">Aucun RDV à venir</p>
-          }
-        </div>
-
-        <!-- PATIENTS SANS PLAN -->
-        <div class="card" style="padding: 20px;">
-          <div class="card-header" style="margin-bottom: 12px;">
-            <h2>⚠️ Sans plan alimentaire</h2>
-            <span style="background: #fef3c7; color: #92400e; font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; border: 1px solid #fde68a;">
-              {{ getSansPlan().length }}
-            </span>
-          </div>
-          @if (getSansPlan().length === 0) {
-            <p style="text-align: center; color: #10b981; font-weight: 600; padding: 16px 0;">
-              ✅ Tous les patients ont un plan !
-            </p>
-          } @else {
-            @for (rdv of getSansPlan(); track rdv.id) {
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #fde8f0;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <div style="width: 32px; height: 32px; border-radius: 50%; background: #fef3c7; color: #92400e; font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; justify-content: center;">
-                    {{ getPatientInitials(rdv) }}
-                  </div>
-                  <span style="font-size: 0.88rem; font-weight: 500;">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</span>
-                </div>
-                <button type="button" class="btn-sm btn-voir" (click)="ouvrirPagePlan(rdv)">+ Plan</button>
-              </div>
-            }
-          }
-        </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-amber">⏳</div>
+      <div class="stat-info">
+        <div class="stat-value v-amber">{{ rendezVousEnAttente.length }}</div>
+        <p class="stat-label">En attente</p>
+        <p style="font-size:10px;color:#854F0B;margin-top:4px;">À traiter</p>
       </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-rose">📋</div>
+      <div class="stat-info">
+        <div class="stat-value v-rose">{{ tauxPlans }}%</div>
+        <p class="stat-label">Taux plans créés</p>
+        <p style="font-size:10px;color:#993556;margin-top:4px;">{{ getSansPlan().length }} sans plan</p>
+      </div>
+    </div>
+  </div>
 
-      <!-- RÉPARTITION OBJECTIFS -->
-      <div class="card full-width" style="padding: 20px; margin-bottom: 20px;">
-        <div class="card-header" style="margin-bottom: 16px;">
-          <h2>📊 Répartition des objectifs patients</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+    <div class="card" style="padding:20px;">
+      <div class="card-header" style="margin-bottom:4px;">
+        <h2>RDV par semaine</h2>
+      </div>
+      <p style="font-size:11px;color:var(--c-muted);margin-bottom:12px;">4 dernières semaines</p>
+      <div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--c-muted);">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#185FA5;margin-right:4px;vertical-align:middle;"></span>Confirmés</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#FAC775;margin-right:4px;vertical-align:middle;"></span>En attente</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#F09595;margin-right:4px;vertical-align:middle;"></span>Refusés</span>
+      </div>
+      <div style="position:relative;width:100%;height:180px;">
+        <canvas id="rdvChart" role="img" aria-label="Graphique RDV par semaine">Données RDV par semaine</canvas>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px;">
+      <div class="card-header" style="margin-bottom:4px;">
+        <h2>Répartition objectifs</h2>
+      </div>
+      <p style="font-size:11px;color:var(--c-muted);margin-bottom:12px;">Tous les patients actifs</p>
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="position:relative;width:140px;height:140px;flex-shrink:0;">
+          <canvas id="objChart" role="img" aria-label="Camembert objectifs">Répartition objectifs patients</canvas>
         </div>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          @for (obj of getObjectifsStats(); track obj.label) {
-            <div style="flex: 1; min-width: 140px; background: #fdf2f8; border: 1px solid #fde8f0; border-radius: 12px; padding: 14px; text-align: center;">
-              <div style="font-size: 1.6rem; font-weight: 800; color: #be185d;">{{ obj.count }}</div>
-              <div style="font-size: 0.78rem; color: #6b7280; margin-top: 4px;">{{ obj.label }}</div>
-              <div style="margin-top: 8px; background: #fde8f0; border-radius: 4px; height: 6px; overflow: hidden;">
-                <div style="height: 100%; background: #be185d; border-radius: 4px;"
-                  [style.width]="rendezVousConfirmes.length > 0 ? (obj.count / rendezVousConfirmes.length * 100) + '%' : '0%'">
-                </div>
-              </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:7px;font-size:11px;color:var(--c-muted);">
+          @for (obj of getObjectifsStats(); track obj.label; let i = $index) {
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:2px;flex-shrink:0;"
+                [style.background]="['#185FA5','#3B6D11','#854F0B','#993556','#534AB7'][i] || '#888'"></span>
+              <span style="flex:1;">{{ obj.label }}</span>
+              <strong style="color:var(--c-ink);">{{ obj.count }}</strong>
             </div>
           }
           @if (getObjectifsStats().length === 0) {
-            <p style="color: #9ca3af;">Aucune donnée disponible</p>
+            <p>Aucune donnée</p>
           }
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- CONSULTATIONS PATIENTS -->
-      <div class="card full-width">
-        <div class="card-header"><h2>Consultations Patients</h2></div>
-        @for (rdv of rendezVousConfirmes; track rdv.id) {
-          <div class="consultation-row">
-            <div class="patient-avatar-sm">{{ getInitials(rdv.userId) }}</div>
-            <div class="consultation-info">
-              <span class="patient-id">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</span>
-              <span class="consultation-date">{{ rdv.dateHeure | date:'dd/MM/yyyy' }}</span>
-              <span class="objectif-tag">{{ rdv.motif }}</span>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+    <div class="card" style="padding:20px;">
+      <div class="card-header" style="margin-bottom:4px;">
+<h2>Évolution RDV confirmés</h2>
+      </div>
+      <p style="font-size:11px;color:var(--c-muted);margin-bottom:12px;">6 derniers mois</p>
+      <div style="position:relative;width:100%;height:160px;">
+        <canvas id="consultChart" role="img" aria-label="Courbe évolution consultations">Évolution des consultations sur 6 mois</canvas>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px;">
+      <div class="card-header" style="margin-bottom:4px;">
+        <h2>Taux de plans créés</h2>
+      </div>
+      <p style="font-size:11px;color:var(--c-muted);margin-bottom:12px;">Couverture patients actifs</p>
+      <div style="display:flex;align-items:center;gap:20px;">
+        <div style="position:relative;width:130px;height:130px;flex-shrink:0;">
+          <canvas id="donutChart" role="img" aria-label="Donut taux plans">Taux de plans alimentaires créés</canvas>
+        </div>
+        <div>
+          <div style="font-size:32px;font-weight:500;color:var(--c-ink);">{{ tauxPlans }}%</div>
+          <div style="font-size:12px;color:var(--c-muted);margin-top:4px;">Patients couverts</div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:11px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3B6D11;"></span>
+              <span style="color:var(--c-muted);">Avec plan</span>
+              <strong style="color:var(--c-ink);margin-left:auto;">{{ rendezVousConfirmes.length - getSansPlan().length }}</strong>
             </div>
-            @if (getConsultationByUserId(rdv.userId); as consultation) {
-              <span class="imc-pill" [class]="imcClass(consultation.imc)">
-                IMC: {{ consultation.imc | number:'1.1-1' }}
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#F09595;"></span>
+              <span style="color:var(--c-muted);">Sans plan</span>
+              <strong style="color:var(--c-ink);margin-left:auto;">{{ getSansPlan().length }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+    <div class="card" style="padding:20px;">
+      <div class="card-header" style="margin-bottom:16px;">
+        <h2>Progression objectifs</h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        @for (obj of getObjectifsStats(); track obj.label; let i = $index) {
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--c-ink);">{{ obj.label }}</span>
+              <span style="color:var(--c-muted);font-weight:500;">
+                {{ rendezVousConfirmes.length > 0 ? (obj.count / rendezVousConfirmes.length * 100).toFixed(0) : 0 }}%
               </span>
-            } @else {
-              <span class="imc-pill" style="background:#f3f4f6;color:#9ca3af;border:1px dashed #d1d5db;">
-                En attente de consultation
-              </span>
-            }
-            <div class="row-actions">
-              <button type="button" class="btn-sm btn-voir" (click)="ouvrirPagePlan(rdv)">📊 Plan alimentaire</button>
-              <button type="button" class="btn-sm btn-conv" (click)="openConversation(rdv.userId)">💬 Conversation</button>
-              @if (getPlanByUserId(rdv.userId)) {
-                <button type="button" class="btn-sm btn-rapport" (click)="ouvrirRapport(rdv)">📝 Rapport</button>
-              }
+            </div>
+            <div style="height:6px;background:var(--c-border);border-radius:4px;overflow:hidden;">
+              <div style="height:100%;border-radius:4px;"
+                [style.width]="rendezVousConfirmes.length > 0 ? (obj.count / rendezVousConfirmes.length * 100) + '%' : '0%'"
+                [style.background]="['#185FA5','#3B6D11','#854F0B','#993556','#534AB7'][i] || '#888'">
+              </div>
             </div>
           </div>
         }
-        @if (rendezVousConfirmes.length === 0) {
-          <p class="empty-state">Aucun rendez-vous confirmé</p>
+        @if (getObjectifsStats().length === 0) {
+          <p class="empty-state">Aucune donnée disponible</p>
         }
       </div>
-     
-      <!-- CONSULTATIONS PATIENTS -->
-      <div class="card full-width">
-        <div class="card-header"><h2>Consultations Patients</h2></div>
+    </div>
 
-        @for (rdv of rendezVousConfirmes; track rdv.id) {
-          <div class="consultation-row">
-            <div class="patient-avatar-sm">{{ getInitials(rdv.userId) }}</div>
-            <div class="consultation-info">
-              <span class="patient-id">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</span>
-              <span class="consultation-date">{{ rdv.dateHeure | date:'dd/MM/yyyy' }}</span>
-              <span class="objectif-tag">{{ rdv.motif }}</span>
+ <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <div class="card" style="padding:16px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <h2>⏰ Prochain RDV</h2>
+        </div>
+        @if (upcomingRdv.length > 0) {
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#fbcfe8,#f472b6);color:#9d174d;font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              {{ getPatientInitials(upcomingRdv[0]) }}
             </div>
-
-            @if (getConsultationByUserId(rdv.userId); as consultation) {
-              <span class="imc-pill" [class]="imcClass(consultation.imc)">
-                IMC: {{ consultation.imc | number:'1.1-1' }}
-              </span>
-            } @else {
-              <span class="imc-pill" style="background:#f3f4f6;color:#9ca3af;border:1px dashed #d1d5db;">
-                En attente de consultation
-              </span>
-            }
-
-            <div class="row-actions">
-              <button type="button" class="btn-sm btn-voir" (click)="ouvrirPagePlan(rdv)">
-                📊 Plan alimentaire
-              </button>
-              <button type="button" class="btn-sm btn-conv" (click)="openConversation(rdv.userId)">
-                💬 Conversation
-              </button>
-              @if (getPlanByUserId(rdv.userId)) {
-                <button type="button" class="btn-sm btn-rapport" (click)="ouvrirRapport(rdv)">
-                  📝 Rapport
-                </button>
-              }
+            <div>
+              <p style="margin:0;font-weight:600;font-size:13px;color:var(--c-ink);">{{ upcomingRdv[0].patientNom || 'Patient #' + upcomingRdv[0].userId }}</p>
+              <p style="margin:3px 0 0;font-size:11px;color:var(--c-muted);">{{ upcomingRdv[0].motif }}</p>
+              <p style="margin:3px 0 0;font-size:11px;color:#be185d;font-weight:600;">📅 {{ upcomingRdv[0].dateHeure | date:'dd MMM · HH:mm' }}</p>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;"
+                  [style.background]="upcomingRdv[0].statut === 'CONFIRME' ? '#dcfce7' : '#fef3c7'"
+                  [style.color]="upcomingRdv[0].statut === 'CONFIRME' ? '#166534' : '#92400e'">
+                  {{ upcomingRdv[0].statut === 'CONFIRME' ? '✓ Confirmé' : '⏳ En attente' }}
+                </span>
+                @if (upcomingRdv[0].statut === 'EN_ATTENTE') {
+                  <button type="button"
+                    style="font-size:10px;padding:2px 8px;border-radius:20px;background:#dcfce7;color:#166534;border:none;cursor:pointer;font-weight:700;"
+                    (click)="accepter(upcomingRdv[0].id)">✓ Accepter</button>
+                  <button type="button"
+                    style="font-size:10px;padding:2px 8px;border-radius:20px;background:#fee2e2;color:#991b1b;border:none;cursor:pointer;font-weight:700;"
+                    (click)="refuser(upcomingRdv[0].id)">✗ Refuser</button>
+                }
+              </div>
             </div>
           </div>
-        }
-
-        @if (rendezVousConfirmes.length === 0) {
-          <p class="empty-state">Aucun rendez-vous confirmé</p>
+        } @else {
+          <p style="text-align:center;color:var(--c-muted);font-size:12px;padding:8px 0;">Aucun RDV à venir</p>
         }
       </div>
 
+      <div class="card" style="padding:16px;">
+        <div class="card-header" style="margin-bottom:12px;">
+          <h2>⚠️ Sans plan</h2>
+          <span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;">{{ getSansPlan().length }}</span>
+        </div>
+        @if (getSansPlan().length === 0) {
+          <p style="text-align:center;color:#10b981;font-weight:600;font-size:12px;">✅ Tous les patients ont un plan !</p>
+        } @else {
+          @for (rdv of getSansPlan().slice(0,3); track rdv.id) {
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--c-border);">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:#fef3c7;color:#92400e;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;">
+                  {{ getPatientInitials(rdv) }}
+                </div>
+                <span style="font-size:12px;font-weight:500;color:var(--c-ink);">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</span>
+              </div>
+              <button type="button" class="btn-sm btn-voir" (click)="ouvrirPagePlan(rdv)" style="font-size:10px;padding:3px 8px;">+ Plan</button>
+            </div>
+          }
+        }
+      </div>
+
+    </div>
+  </div>
+  
+  <div class="card full-width">
+    <div class="card-header"><h2>Consultations Patients</h2></div>
+    @for (rdv of rendezVousConfirmesSansDoublons; track rdv.id) {
+      <div class="consultation-row">
+        <div class="patient-avatar-sm">{{ getInitials(rdv.userId) }}</div>
+        <div class="consultation-info">
+          <span class="patient-id">{{ rdv.patientNom || 'Patient #' + rdv.userId }}</span>
+          <span class="consultation-date">{{ rdv.dateHeure | date:'dd/MM/yyyy' }}</span>
+          <span class="objectif-tag">{{ rdv.motif }}</span>
+        </div>
+        @if (getConsultationByUserId(rdv.userId); as consultation) {
+          <span class="imc-pill" [class]="imcClass(consultation.imc)">IMC: {{ consultation.imc | number:'1.1-1' }}</span>
+        } @else {
+          <span class="imc-pill" style="background:#f3f4f6;color:#9ca3af;border:1px dashed #d1d5db;">En attente</span>
+        }
+        <div class="row-actions">
+          <button type="button" class="btn-sm btn-voir" (click)="ouvrirPagePlan(rdv)">📊 Plan</button>
+          <button type="button" class="btn-sm btn-conv" (click)="openConversation(rdv.userId)">💬 Conv.</button>
+          @if (getPlanByUserId(rdv.userId)) {
+            <button type="button" class="btn-sm btn-rapport" (click)="ouvrirRapport(rdv)">📝 Rapport</button>
+          }
+        </div>
+      </div>
+    }
+    @if (rendezVousConfirmes.length === 0) {
+      <p class="empty-state">Aucun rendez-vous confirmé</p>
     }
   </div>
-</div>
 
-<!-- ═══ PAGE PLAN ALIMENTAIRE ═══ -->
+}
+</div>
+  </div>
+
 @if (activePage === 'plan-page' && selectedRdvForPlan) {
   <div class="plan-page">
 
-    <!-- HEADER STICKY -->
     <div class="plan-page-header">
       <button class="btn-back" (click)="fermerPagePlan()">
         ← Retour
@@ -750,7 +697,6 @@
       </div>
     </div>
 
-    <!-- BODY -->
     <div class="plan-page-body">
 
       @if (planSuccess) {
@@ -765,7 +711,6 @@
         </div>
       }
 
-      <!-- INFOS PATIENT -->
       <div class="card" style="padding: 20px; margin-bottom: 20px;">
         <p class="section-label">Informations du patient</p>
 
@@ -861,7 +806,6 @@
         </div>
       </div>
 
-      <!-- REPAS -->
       <div class="card" style="padding: 24px;">
         <div class="repas-header">
           <p class="section-label" style="margin:0">Repas du plan</p>
@@ -927,7 +871,6 @@
   </div>
 }
 
-<!-- ═══ PAGE RAPPORT ═══ -->
 @if (activePage === 'rapport-page' && rapportPlan && rapportRdv) {
   <div class="rapport-full-page">
 

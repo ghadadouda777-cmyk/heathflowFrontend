@@ -90,13 +90,11 @@ export class PatientDashboard implements OnInit, OnDestroy {
 
   activeSection: Section = 'dashboard';
 
-  // RDV Nutritionniste
   rdvNutriEnAttente: RendezVous[] = [];
   rdvNutriConfirmes: RendezVous[] = [];
   rdvNutriRefuses: RendezVous[] = [];
   activeTabNutri: 'attente' | 'confirme' | 'refuse' = 'attente';
 
-  // RDV Coach
   rdvCoachEnAttente: RendezVous[] = [];
   rdvCoachConfirmes: RendezVous[] = [];
   rdvCoachRefuses: RendezVous[] = [];

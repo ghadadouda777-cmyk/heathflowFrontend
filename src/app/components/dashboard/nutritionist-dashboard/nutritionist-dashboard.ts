@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, NgZone, Inject, PLATFORM_ID, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -49,7 +49,7 @@ export interface UpcomingRdv extends RendezVous {
   styleUrls: ['./nutritionist-dashboard.css']
 })
 export class NutritionistDashboard implements OnInit {
-
+private charts: any[] = [];
   rendezVousEnAttente: RendezVous[] = [];
   rendezVousConfirmes: RendezVous[] = [];
   rendezVousRefuses: RendezVous[] = [];
@@ -57,7 +57,9 @@ export class NutritionistDashboard implements OnInit {
 patientInfo: PatientInfo | null = null;
 patientInfoLoading = false;
   activeTab: 'attente' | 'confirme' | 'refuse' = 'attente';
-
+profileAbonnement = {
+  typeAbonnement: ''
+};
   nutritionnisteId: string = '';
 
   consultations: Consultation[] = [];
@@ -80,7 +82,7 @@ patientInfoLoading = false;
 
   selectedPatientId: number | null = null;
 
-  activeParamsTab: 'compte' | 'securite' | 'notifs' | 'prefs' = 'compte';
+  activeParamsTab: 'compte' | 'securite' | 'notifs' | 'prefs' | 'abonnement' = 'compte';
   paramSuccess = '';
   paramError = '';
 
@@ -131,14 +133,12 @@ patientInfoLoading = false;
     'Dîner'
   ];
 
-  // ── Variables plan ──
   plans: { [userId: string]: any } = {};
   showPlanPage = false;
   selectedRdvForPlan: RendezVous | null = null;
   planSaved: any = null;
 rapportSearchQuery: string = '';
 filteredRapports: { rdv: RendezVous, plan: any }[] = [];
-  // ── Variables rapport ──
   showRapportPage = false;
   rapportPlan: any = null;
   rapportRdv: RendezVous | null = null;
@@ -178,9 +178,9 @@ filteredRapports: { rdv: RendezVous, plan: any }[] = [];
     this.loadConsultations();
     this.loadPlans();
     this.loadSavedPrefs();
+    this.loadAbonnement();
   }
 
-  // ── Charge les plans du nutritionniste ──
   loadPlans(): void {
     const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
     this.http.get<any[]>(`${this.apiUrl}/plans-alimentaires`, { headers })
@@ -200,12 +200,187 @@ filteredRapports: { rdv: RendezVous, plan: any }[] = [];
       });
   }
 
-  // ── Récupère plan par userId ──
   getPlanByUserId(userId: any): any {
     return this.plans[String(userId)] ?? null;
   }
+changePlan(planId: string): void {
+  window.location.href = '/abonnement';
+}
 
-  // ── Ouvre page plan ──
+loadAbonnement(): void {
+  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+  this.http.get<any>(`${this.apiUrl}/users/${this.nutritionnisteId}`, { headers })
+    .subscribe({
+      next: (data) => {
+        this.ngZone.run(() => {
+          this.profileAbonnement.typeAbonnement = data.typeAbonnement ?? '';
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => console.error('❌ Erreur loadAbonnement:', err)
+    });
+}
+private getRdvParSemaine(): { confirmes: number[], attente: number[], refuses: number[] } {
+  const now = new Date();
+  const confirmes = [0, 0, 0, 0];
+  const attente   = [0, 0, 0, 0];
+  const refuses   = [0, 0, 0, 0];
+
+  const allRdv = [
+    ...this.rendezVousConfirmes,
+    ...this.rendezVousEnAttente,
+    ...this.rendezVousRefuses
+  ];
+
+  allRdv.forEach(rdv => {
+    const date = new Date(rdv.dateHeure);
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    let semIndex = -1;
+    if (diffDays >= -6  && diffDays <= 6)  semIndex = 3;
+    if (diffDays >= 7   && diffDays <= 13) semIndex = 2;
+    if (diffDays >= 14  && diffDays <= 20) semIndex = 1;
+    if (diffDays >= 21  && diffDays <= 27) semIndex = 0;
+    if (semIndex === -1) return;
+
+    if (rdv.statut === 'CONFIRME') confirmes[semIndex]++;
+    else if (rdv.statut === 'EN_ATTENTE') attente[semIndex]++;
+    else if (rdv.statut === 'REFUSE') refuses[semIndex]++;
+  });
+
+  return { confirmes, attente, refuses };
+}
+private getConsultationsParMois(): number[] {
+  const now = new Date();
+  const mois = Array(6).fill(0);
+
+  this.rendezVousConfirmes.forEach(rdv => {
+    const date = new Date(rdv.dateHeure);
+    if (isNaN(date.getTime())) return;
+    const diffMois = (now.getFullYear() - date.getFullYear()) * 12
+                   + (now.getMonth() - date.getMonth());
+    if (diffMois >= -1 && diffMois <= 5) mois[5 - diffMois]++;
+  });
+
+  return mois;
+}
+
+private getDerniersMoisLabels(): string[] {
+  const labels = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const now = new Date();
+  const result = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push(labels[d.getMonth()]);
+  }
+  return result;
+}
+get rendezVousConfirmesSansDoublons(): RendezVous[] {
+  const seen = new Set<any>();
+  return this.rendezVousConfirmes.filter(rdv => {
+    if (seen.has(rdv.userId)) return false;
+    seen.add(rdv.userId);
+    return true;
+  });
+}
+initCharts(): void {
+  if (!isPlatformBrowser(this.platformId)) return;
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const textColor = isDark ? '#9499b0' : '#6b7280';
+
+  this.charts.forEach(c => c.destroy());
+  this.charts = [];
+
+  const semaines = this.getRdvParSemaine();
+
+  const rdvEl = document.getElementById('rdvChart') as HTMLCanvasElement;
+  if (rdvEl) {
+    this.charts.push(new (window as any).Chart(rdvEl, {
+      type: 'bar',
+      data: {
+        labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+        datasets: [
+          { label: 'Confirmés', data: semaines.confirmes, backgroundColor: '#185FA5', borderRadius: 4, borderSkipped: false },
+          { label: 'En attente', data: semaines.attente,  backgroundColor: '#FAC775', borderRadius: 4, borderSkipped: false },
+          { label: 'Refusés',   data: semaines.refuses,   backgroundColor: '#F09595', borderRadius: 4, borderSkipped: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { color: textColor, font: { size: 11 } } },
+          y: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } }
+        }
+      }
+    }));
+  }
+
+  const objEl = document.getElementById('objChart') as HTMLCanvasElement;
+  if (objEl) {
+    const stats = this.getObjectifsStats();
+    this.charts.push(new (window as any).Chart(objEl, {
+      type: 'doughnut',
+      data: {
+        labels: stats.map(s => s.label),
+        datasets: [{ data: stats.map(s => s.count), backgroundColor: ['#185FA5', '#3B6D11', '#854F0B', '#993556', '#534AB7'], borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+    }));
+  }
+
+  const consultEl = document.getElementById('consultChart') as HTMLCanvasElement;
+  if (consultEl) {
+    const consultData = this.getConsultationsParMois();
+    this.charts.push(new (window as any).Chart(consultEl, {
+      type: 'line',
+      data: {
+        labels: this.getDerniersMoisLabels(),
+        datasets: [{
+          label: 'Consultations',
+          data: consultData,
+          borderColor: '#D4537E',
+          backgroundColor: 'rgba(212,83,126,0.08)',
+          borderWidth: 2,
+          pointBackgroundColor: '#D4537E',
+          pointRadius: 4,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: textColor, font: { size: 11 } } },
+          y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } }
+        }
+      }
+    }));
+  }
+
+  const donutEl = document.getElementById('donutChart') as HTMLCanvasElement;
+  if (donutEl) {
+    const total = this.rendezVousConfirmes.length;
+    const avecPlan = Object.keys(this.plans).length;
+    const sansPlan = Math.max(0, total - avecPlan);
+    this.charts.push(new (window as any).Chart(donutEl, {
+      type: 'doughnut',
+      data: {
+        labels: ['Avec plan', 'Sans plan'],
+        datasets: [{ data: [avecPlan, sansPlan], backgroundColor: ['#3B6D11', '#F09595'], borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+    }));
+  }
+}
+get tauxPlans(): number {
+  const total = this.rendezVousConfirmes.length;
+  if (total === 0) return 0;
+  return Math.round((Object.keys(this.plans).length / total) * 100);
+}
   ouvrirPagePlan(rdv: RendezVous): void {
   this.selectedRdvForPlan = rdv;
   const existing = this.getPlanByUserId(rdv.userId);
@@ -232,8 +407,7 @@ filteredRapports: { rdv: RendezVous, plan: any }[] = [];
   this.activePage = 'plan-page';
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-  this.http.get<PatientInfo>(`${this.apiUrl}/users/${rdv.userId}`, { headers })
-    .subscribe({
+this.http.get<PatientInfo>(`${this.apiUrl}/patients/${rdv.userId}`, { headers })    .subscribe({
       next: (data) => {
   this.ngZone.run(() => {
     console.log('✅ patientInfo reçu:', data);
@@ -245,19 +419,18 @@ filteredRapports: { rdv: RendezVous, plan: any }[] = [];
       error: (err) => {
         this.ngZone.run(() => {
           console.error('❌ Erreur patient info:', err.status);
-          this.patientInfoLoading = false; // ✅
+          this.patientInfoLoading = false; 
           this.cdr.detectChanges();
         });
       },
       complete: () => {
         this.ngZone.run(() => {
-          this.patientInfoLoading = false; // ✅ garantie finale
+          this.patientInfoLoading = false; 
           this.cdr.detectChanges();
         });
       }
     });
 }
-  // ── Ferme page plan ──
   fermerPagePlan(): void {
     this.showPlanPage = false;
     this.selectedRdvForPlan = null;
@@ -265,7 +438,6 @@ filteredRapports: { rdv: RendezVous, plan: any }[] = [];
     this.activePage = 'dashboard';
   }
 
-  // ── Sauvegarde plan depuis page dédiée ──
   savePlanFromPage(): void {
     if (this.planLoading) return;
     if (!this.planForm.nom.trim()) {
@@ -336,7 +508,6 @@ filterRapports(): void {
     return nom.includes(q);
   });
 }
-  // ── Ouvre rapport ──
   ouvrirRapport(rdv: RendezVous): void {
     const plan = this.getPlanByUserId(rdv.userId);
     if (!plan) return;
@@ -346,7 +517,6 @@ filterRapports(): void {
     this.activePage = 'rapport-page';
   }
 
-  // ── Ferme rapport ──
   fermerRapport(): void {
     this.showRapportPage = false;
     this.rapportPlan = null;
@@ -379,6 +549,8 @@ loadRendezVous(): void {
         this.buildUpcomingRdv(data);
         this.buildRapportsList(); // ← AJOUTE ICI
         this.cdr.detectChanges();
+          setTimeout(() => this.initCharts(), 100); // ← AJOUTE ICI
+
       });
     },
     error: (err: any) => {
@@ -432,33 +604,43 @@ loadRendezVous(): void {
     }
   }
 
-  private buildUpcomingRdv(all: RendezVous[]): void {
-    const now = new Date();
-    const weekEnd = new Date(now);
-    weekEnd.setDate(now.getDate() + 30);
-    this.upcomingRdv = all
-      .filter(r => { const d = new Date(r.dateHeure); return d >= now && d <= weekEnd; })
-      .sort((a, b) => new Date(a.dateHeure).getTime() - new Date(b.dateHeure).getTime())
-      .slice(0, 6)
-      .map((rdv, i) => ({
-        ...rdv,
-        dotColor: this.dotColors[i % this.dotColors.length],
-        badgeColor: this.badgeColors[i % this.badgeColors.length]
-      }));
-  }
+private buildUpcomingRdv(all: RendezVous[]): void {
+  const now = new Date();
+  const monthAgo = new Date(now);
+  monthAgo.setDate(now.getDate() - 30);
+  const monthAhead = new Date(now);
+  monthAhead.setDate(now.getDate() + 30);
 
-  setPage(page: string): void {
-    this.activePage = page;
-    this.paramSuccess = '';
-    this.paramError = '';
-    if (page === 'params') {
-      this.previewTheme = this.displayPrefs.theme;
-      this.previewLangue = this.displayPrefs.langue;
-    }
-    if (page === 'rapports') {
-    this.buildRapportsList(); // ← AJOUTE ICI
+  this.upcomingRdv = all
+    .filter(r => {
+      const d = new Date(r.dateHeure);
+      return d >= monthAgo && d <= monthAhead
+        && (r.statut === 'CONFIRME' || r.statut === 'EN_ATTENTE'); // ← هنا
+    })
+    .sort((a, b) => new Date(b.dateHeure).getTime() - new Date(a.dateHeure).getTime())
+    .slice(0, 6)
+    .map((rdv, i) => ({
+      ...rdv,
+      dotColor: this.dotColors[i % this.dotColors.length],
+      badgeColor: this.badgeColors[i % this.badgeColors.length]
+    }));
+}
+
+ setPage(page: string): void {
+  this.activePage = page;
+  this.paramSuccess = '';
+  this.paramError = '';
+  if (page === 'params') {
+    this.previewTheme = this.displayPrefs.theme;
+    this.previewLangue = this.displayPrefs.langue;
   }
+  if (page === 'rapports') {
+    this.buildRapportsList();
   }
+  if (page === 'dashboard') {
+    setTimeout(() => this.initCharts(), 100);
+  }
+}
 
   goToConversation(): void {
     this.selectedPatientId = null;
@@ -470,7 +652,7 @@ loadRendezVous(): void {
     this.activePage = 'conv';
   }
 
-  setParamsTab(tab: 'compte' | 'securite' | 'notifs' | 'prefs'): void {
+  setParamsTab(tab: 'compte' | 'securite' | 'notifs' | 'prefs'| 'abonnement'): void {
     this.activeParamsTab = tab;
     this.paramSuccess = '';
     this.paramError = '';
@@ -531,20 +713,21 @@ getObjectifsStats(): { label: string, count: number }[] {
   return Object.entries(map).map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count);
 }
-  loadSavedPrefs(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    try {
-      const saved = localStorage.getItem(this.PREFS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        this.displayPrefs = { ...this.displayPrefs, ...parsed };
-      }
-    } catch (e) { }
-    this.applyTheme(this.displayPrefs.theme);
-    this.applyLangue(this.displayPrefs.langue);
-    this.previewTheme = this.displayPrefs.theme;
-    this.previewLangue = this.displayPrefs.langue;
-  }
+ loadSavedPrefs(): void {
+  if (!isPlatformBrowser(this.platformId)) return;
+  try {
+    const saved = localStorage.getItem(this.PREFS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      this.displayPrefs = { ...this.displayPrefs, ...parsed };
+    }
+  } catch (e) { }
+  this.displayPrefs.theme = 'light';
+  this.applyTheme('light');
+  this.applyLangue(this.displayPrefs.langue);
+  this.previewTheme = 'light';
+  this.previewLangue = this.displayPrefs.langue;
+}
 
   onThemeChange(value: string): void {
     this.previewTheme = value;
@@ -575,12 +758,11 @@ getObjectifsStats(): { label: string, count: number }[] {
   }
 
   private applyTheme(theme: string): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    const root = document.documentElement;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    let isDark = theme === 'dark' || (theme === 'auto' && prefersDark);
-    root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  }
+  if (!isPlatformBrowser(this.platformId)) return;
+  const root = document.documentElement;
+  let isDark = theme === 'dark'; // 'auto' ignoré → toujours light par défaut
+  root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+}
 
   private applyLangue(langue: string): void {
     if (!isPlatformBrowser(this.platformId)) return;
