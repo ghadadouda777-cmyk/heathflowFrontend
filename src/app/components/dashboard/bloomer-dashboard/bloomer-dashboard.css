@@ -221,6 +221,7 @@ select:focus {
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s;
+  width: 100px;
 }
 .btn-add:hover { background: #6d28d9; }
 

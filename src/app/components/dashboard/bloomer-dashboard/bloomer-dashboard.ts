@@ -68,6 +68,10 @@ protSuivi: number = 0;
       this.loadData();
     }
   });
+
+
+  
+  
   }
 loadData(): void {
   if (!this.userId) return;
@@ -236,6 +240,51 @@ this.protSuivi += protRepas;
   });
 }
 
+loadingAI = false;
+aiMessage: string = '';
+async addMealWithAI(): Promise<void> {
+  if (!this.newMeal.name || !this.newMeal.quantite) return;
+  this.loadingAI = true;
 
+  try {
+    const response = await fetch('http://localhost:8084/api/nutrition/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nom: this.newMeal.name,        // ← juste nom
+        quantite: this.newMeal.quantite // ← et quantite
+      })
+    });
+
+    const data = await response.json();
+    const result = JSON.parse(data.result); // ← { calories, proteines }
+
+    const meal: Meal = {
+      name: this.newMeal.name!,
+      type: this.newMeal.type || 'dejeuner',
+      quantite: this.newMeal.quantite!,
+      cal100: Math.round((result.calories / this.newMeal.quantite!) * 100),
+      prot100: Math.round((result.proteines / this.newMeal.quantite!) * 100)
+    };
+
+    this.meals.push(meal);
+    this.calSuivi += result.calories;   // ← AJOUTE
+this.protSuivi += result.proteines; // ← AJOUTE
+    this.suiviService.updateCalories(this.userId, result.calories).subscribe();
+    this.suiviService.updateProteines(this.userId, result.proteines).subscribe();
+    this.aiMessage = `🤖 Ajouté ! ${result.calories} kcal et ${result.proteines}g de protéines enregistrés ✅`;
+
+    this.newMeal = {
+      name: '', type: 'petit-dej',
+      quantite: undefined, cal100: undefined, prot100: undefined
+    };
+
+  } catch (err) {
+    console.error('Erreur AI:', err);
+  } finally {
+    this.loadingAI = false;
+    this.cdr.detectChanges();
+  }
+}
 
   }

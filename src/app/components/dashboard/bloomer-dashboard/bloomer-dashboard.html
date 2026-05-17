@@ -97,18 +97,22 @@
     </div>
 
     <div class="input-row">
-      <input type="text"   placeholder="Nom du plat"  [(ngModel)]="newMeal.name" />
-      <select [(ngModel)]="newMeal.type">
-        <option value="petit-dej">Petit-dej</option>
-        <option value="dejeuner">Déjeuner</option>
-        <option value="diner">Dîner</option>
-        <option value="collation">Collation</option>
-      </select>
-      <input type="number" placeholder="qté (g)"   min="1"     [(ngModel)]="newMeal.quantite" />
-      <input type="number" placeholder="cal/100g"  min="1"     [(ngModel)]="newMeal.cal100" />
-      <input type="number" placeholder="prot/100g" min="0" step="0.1" [(ngModel)]="newMeal.prot100" />
-      <button class="btn-add" (click)="addMeal()">+ Ajouter</button>
-    </div>
+  <input type="text" placeholder="Nom du plat" [(ngModel)]="newMeal.name" />
+  <select [(ngModel)]="newMeal.type">
+    <option value="petit-dej">Petit-dej</option>
+    <option value="dejeuner">Déjeuner</option>
+    <option value="diner">Dîner</option>
+    <option value="collation">Collation</option>
+  </select>
+  <input type="number" placeholder="qté (g)" min="1" [(ngModel)]="newMeal.quantite" />
+  <button class="btn-add" (click)="addMealWithAI()" [disabled]="loadingAI">
+    {{ loadingAI ? 'Calcul...' : '✨ Ajouter' }}
+  </button> 
+  
+</div>
+<p *ngIf="aiMessage" style="color: purple; margin-top: 8px;">
+  {{ aiMessage }}
+</p>
 
     <div class="nutrition-summary">
       <div class="nutr-card">
@@ -126,7 +130,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div> 
 
 
   <div class="right-col">
