@@ -1,4 +1,4 @@
-<div class="app-layout">
+<div class="app-layout" [class.dark]="displayPrefs.theme === 'dark'">
 
   <!-- SIDEBAR -->
   <nav class="sidebar">
@@ -58,10 +58,6 @@
         <span class="nav-label">Coach Sportif</span>
       </button>
     </div>
-
-    <!-- Notification bell in sidebar -->
-    <div style="padding: 0.75rem 1rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
-    </div>
   </nav>
 
   <!-- MAIN CONTENT -->
@@ -75,7 +71,6 @@
         <p class="page-sub">Bienvenue {{ profile.prenom }} 👋</p>
       </div>
       <div class="header-actions">
-        <app-notification-bell [lang]="'fr'" [userId]="userId"></app-notification-bell>
         <button class="btn-primary" (click)="goTo('rdv-nutritionniste')">🩺 RDV Nutritionniste</button>
         <button class="btn-secondary" (click)="openCalendarFor('coach')">🏋️ RDV Coach</button>
       </div>
@@ -115,83 +110,220 @@
     <div class="main-grid">
       <div class="card">
         <div class="card-header">
-          <h2>Mon Suivi</h2>
+          <h2>Mes Notes & Agenda</h2>
         </div>
-        @if (derniereConsultation) {
-        <div class="suivi-row"><span class="suivi-label">Objectif</span><span class="suivi-val goal">🎯 {{
-            derniereConsultation.objectif }}</span></div>
-        <div class="suivi-row"><span class="suivi-label">Diagnostic</span><span class="suivi-val">{{
-            derniereConsultation.diagnostic }}</span></div>
-        <div class="suivi-row"><span class="suivi-label">Recommandations</span><span class="suivi-val small">{{
-            derniereConsultation.recommandations }}</span></div>
-        <div class="suivi-row">
-          <span class="suivi-label">Prochain RDV</span>
-          <span class="suivi-val date">📆 {{ derniereConsultation.prochainRdv ? (derniereConsultation.prochainRdv |
-            date:'dd/MM/yyyy') : 'Non défini' }}</span>
-        </div>
-        <div class="imc-gauge">
-          <div class="gauge-header">
-            <span class="gauge-label">IMC</span>
-            <strong class="gauge-val">{{ derniereConsultation.imc | number:'1.1-1' }}</strong>
-            <span class="gauge-tag">{{ getImcLabel() }}</span>
+        <div class="agenda-container" style="display: flex; flex-direction: column; gap: 15px; padding-top: 10px;">
+          <div class="agenda-input-group" style="display: flex; gap: 10px;">
+            <input type="text" class="agenda-input"
+              style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);"
+              [(ngModel)]="newNoteText" placeholder="Ajouter une note ou une tâche..." (keyup.enter)="addNote()">
+            <button class="btn-primary" style="padding: 0 15px;" (click)="addNote()">+</button>
           </div>
-          <div class="gauge-bar">
-            <div class="gauge-fill" [style.width]="getImcPercent()"></div>
+          <div class="agenda-list"
+            style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+            @for (note of agendaNotes; track note.id) {
+            <div class="agenda-item" [style.opacity]="note.completed ? '0.6' : '1'"
+              style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-sec); border-radius: 8px;">
+              <button class="agenda-check" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;"
+                (click)="toggleNote(note)">{{ note.completed ? '✅' : '⬜' }}</button>
+              <span class="agenda-text" [style.text-decoration]="note.completed ? 'line-through' : 'none'"
+                style="flex: 1;">{{ note.text }}</span>
+              <button class="agenda-delete"
+                style="background: none; border: none; color: #ff4d4f; cursor: pointer; font-size: 1.2rem;"
+                (click)="deleteNote(note.id)">✕</button>
+            </div>
+            }
+            @if (agendaNotes.length === 0) {
+            <p class="empty-state">Aucune note pour le moment.</p>
+            }
           </div>
-          <div class="gauge-range"><span>16</span><span>18.5</span><span>25</span><span>30</span><span>40</span></div>
         </div>
-        } @else {
-        <p class="empty-state">Aucune consultation disponible</p>
-        }
       </div>
 
       <div class="card">
         <div class="card-header">
           <h2>Suivi Quotidien</h2>
         </div>
-        <div class="tracking-list">
-          <div class="tracking-item"><span class="tr-icon">💧</span>
-            <div class="tr-info">
-              <p class="tr-label">Hydratation</p>
-              <p class="tr-val">{{ eauBue }} <span>/ {{ eauObjectif }} coupes</span></p>
+        <!-- Quick Actions inside Suivi Quotidien card -->
+        <div class="quick-actions-row">
+          <button class="btn-action-water" (click)="addWater()">
+            💧 +1 coupe
+          </button>
+          <button class="btn-action-sport" (click)="addExercice()">
+            🏃 +1 exercice
+          </button>
+          <div class="sleep-inline">
+            <input type="number" step="0.5" min="0" max="24" [(ngModel)]="sleepInput" placeholder="heures de sommeil" />
+            <button class="btn-action-sleep" (click)="logSleep()">OK 😴</button>
+          </div>
+        </div>
+
+
+        <!-- Hydratation -->
+        <div class="tracking-item">
+          <span class="tr-icon">💧</span>
+          <div class="tr-info">
+            <p class="tr-label">Hydratation</p>
+            <p class="tr-val">{{ dailyStats.water }} <span>/ {{ dailyStats.goalWater }} coupes</span></p>
+          </div>
+          <div class="tr-bar-wrap">
+            <div class="tr-bar">
+              <div class="tr-fill water" [style.width.%]="(dailyStats.water / dailyStats.goalWater) * 100">
+              </div>
             </div>
-            <div class="tr-bar-wrap">
-              <div class="tr-bar">
-                <div class="tr-fill water" [style.width]="eauPct + '%'"></div>
-              </div><span class="tr-pct">{{ eauPct }}%</span>
+            <span class="tr-pct">{{ (dailyStats.water / dailyStats.goalWater) * 100 | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+
+        <!-- Activité -->
+        <div class="tracking-item">
+          <span class="tr-icon">🏃</span>
+          <div class="tr-info">
+            <p class="tr-label">Activité</p>
+            <p class="tr-val">{{ dailyStats.activity }} <span>/ {{ dailyStats.goalActivity }} séances</span></p>
+          </div>
+          <div class="tr-bar-wrap">
+            <div class="tr-bar">
+              <div class="tr-fill sport" [style.width.%]="(dailyStats.activity / dailyStats.goalActivity) * 100">
+              </div>
+            </div>
+            <span class="tr-pct">{{ (dailyStats.activity / dailyStats.goalActivity) * 100 | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+
+        <!-- Alimentation -->
+        <div class="tracking-item">
+          <span class="tr-icon">🥗</span>
+          <div class="tr-info">
+            <p class="tr-label">Alimentation</p>
+            <p class="tr-val">{{ dailyStats.nutrition }} <span>%</span></p>
+          </div>
+          <div class="tr-bar-wrap">
+            <div class="tr-bar">
+              <div class="tr-fill food" [style.width.%]="dailyStats.nutrition"></div>
+            </div>
+            <span class="tr-pct">{{ dailyStats.nutrition }}%</span>
+          </div>
+        </div>
+
+        <!-- Sommeil -->
+        <div class="tracking-item">
+          <span class="tr-icon">😴</span>
+          <div class="tr-info">
+            <p class="tr-label">Sommeil</p>
+            <p class="tr-val">{{ dailyStats.sleep }}h <span>/ {{ dailyStats.goalSleep }}h</span></p>
+          </div>
+          <div class="tr-bar-wrap">
+            <div class="tr-bar">
+              <div class="tr-fill sleep" [style.width.%]="(dailyStats.sleep / dailyStats.goalSleep) * 100"></div>
+            </div>
+            <span class="tr-pct">{{ (dailyStats.sleep / dailyStats.goalSleep) * 100 | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+
+        <!-- Redirect button if data is low or missing -->
+        @if (!hasDailyData) {
+        <div class="tracking-empty-action">
+          <p>Vos infos ne sont pas à jour aujourd'hui.</p>
+          <a [routerLink]="['/dashboard/bloomer', userId]" class="btn-complete-suivi">
+            🚀 Compléter mon suivi
+          </a>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- 📊 STATISTIQUES, MOTIVATION & ÉVOLUTION -->
+    <div class="card full-width stats-evolution-card">
+      <div class="card-header">
+        <h2>📊 Répartition, Motivation & Évolution</h2>
+        <span class="count-badge">Mes Stats</span>
+      </div>
+
+      <div class="stats-evo-grid">
+        <!-- Panel 1: Motivation & Humeur -->
+        <div class="evo-panel motivation-panel">
+          <h3>✨ Mon Niveau de Motivation</h3>
+          <div class="motivation-circle-container">
+            <div class="motivation-circle"
+              [style.background]="'conic-gradient(var(--btn-gradient-start) 0% ' + motivationLevel + '%, var(--bg-sec) ' + motivationLevel + '% 100%)'">
+              <div class="motivation-circle-inner">
+                <span class="motivation-value">{{ motivationLevel }}%</span>
+                <span class="motivation-label-text">{{ getMotivationLabel() }}</span>
+              </div>
             </div>
           </div>
-          <div class="tracking-item"><span class="tr-icon">🏃</span>
-            <div class="tr-info">
-              <p class="tr-label">Activité</p>
-              <p class="tr-val">{{ exoFaits }} <span>/ {{ exoObjectif }} séances</span></p>
+          <div class="motivation-slider-container">
+            <input type="range" min="10" max="100" step="5" [(ngModel)]="motivationLevel" class="motivation-slider">
+            <p class="motivation-quote">"{{ getMotivationQuote() }}"</p>
+          </div>
+        </div>
+
+        <!-- Panel 2: Répartition des Objectifs -->
+        <div class="evo-panel objectives-panel">
+          <h3>🎯 Répartition de mes Objectifs</h3>
+          <div class="objectives-list">
+            <!-- Hydratation -->
+            <div class="objective-progress-row">
+              <div class="obj-label-row">
+                <span>💧 Hydratation</span>
+                <span>{{ (dailyStats.water / dailyStats.goalWater) * 100 | number:'1.0-0' }}%</span>
+              </div>
+              <div class="obj-progress-bar">
+                <div class="obj-progress-fill water-fill"
+                  [style.width.%]="(dailyStats.water / dailyStats.goalWater) * 100"></div>
+              </div>
             </div>
-            <div class="tr-bar-wrap">
-              <div class="tr-bar">
-                <div class="tr-fill sport" [style.width]="exoPct + '%'"></div>
-              </div><span class="tr-pct">{{ exoPct }}%</span>
+            <!-- Activité -->
+            <div class="objective-progress-row">
+              <div class="obj-label-row">
+                <span>⚡ Activité</span>
+                <span>{{ (dailyStats.activity / dailyStats.goalActivity) * 100 | number:'1.0-0' }}%</span>
+              </div>
+              <div class="obj-progress-bar">
+                <div class="obj-progress-fill activity-fill"
+                  [style.width.%]="(dailyStats.activity / dailyStats.goalActivity) * 100"></div>
+              </div>
+            </div>
+            <!-- Sommeil -->
+            <div class="objective-progress-row">
+              <div class="obj-label-row">
+                <span>😴 Sommeil</span>
+                <span>{{ (dailyStats.sleep / dailyStats.goalSleep) * 100 | number:'1.0-0' }}%</span>
+              </div>
+              <div class="obj-progress-bar">
+                <div class="obj-progress-fill sleep-fill"
+                  [style.width.%]="(dailyStats.sleep / dailyStats.goalSleep) * 100"></div>
+              </div>
+            </div>
+            <!-- Alimentation -->
+            <div class="objective-progress-row">
+              <div class="obj-label-row">
+                <span>🍎 Alimentation</span>
+                <span>{{ dailyStats.nutrition }}%</span>
+              </div>
+              <div class="obj-progress-bar">
+                <div class="obj-progress-fill nutrition-fill" [style.width.%]="dailyStats.nutrition"></div>
+              </div>
             </div>
           </div>
-          <div class="tracking-item"><span class="tr-icon">🔥</span>
-            <div class="tr-info">
-              <p class="tr-label">Calories</p>
-              <p class="tr-val">{{ calories }} <span>/ {{ caloriesObjectif }} kcal</span></p>
-            </div>
-            <div class="tr-bar-wrap">
-              <div class="tr-bar">
-                <div class="tr-fill food" [style.width]="caloriesPct + '%'"></div>
-              </div><span class="tr-pct">{{ caloriesPct }}%</span>
-            </div>
-          </div>
-          <div class="tracking-item"><span class="tr-icon">😴</span>
-            <div class="tr-info">
-              <p class="tr-label">Sommeil</p>
-              <p class="tr-val">{{ sommeil }}h <span>/ {{ sommeilObjectif }}h</span></p>
-            </div>
-            <div class="tr-bar-wrap">
-              <div class="tr-bar">
-                <div class="tr-fill sleep" [style.width]="sommeilPct + '%'"></div>
-              </div><span class="tr-pct">{{ sommeilPct }}%</span>
+        </div>
+
+        <!-- Panel 3: Évolution Hebdomadaire -->
+        <div class="evo-panel evolution-panel">
+          <h3>📈 Mon Évolution</h3>
+          <div class="evolution-chart-container">
+            <div class="evo-chart">
+              @for (day of evolutionData; track day.jour) {
+              <div class="chart-col">
+                <div class="chart-bar-container">
+                  <div class="chart-bar" [style.height.%]="day.pct" [attr.data-pct]="day.pct + '%'">
+                    <span class="bar-tooltip">{{ day.pct }}%</span>
+                  </div>
+                </div>
+                <span class="chart-day-label">{{ day.jour }}</span>
+              </div>
+              }
             </div>
           </div>
         </div>
@@ -200,23 +332,33 @@
 
     <div class="card full-width">
       <div class="card-header">
-        <h2>Historique des Consultations</h2>
-        <span class="count-badge">{{ consultations.length }}</span>
+        <h2>Historique (Consultations & RDV)</h2>
+        <span class="count-badge">{{ historyItems.length }}</span>
       </div>
-      @for (c of consultations; track c.id) {
-      <div class="consultation-row" (click)="openConsultation(c.id)">
-        <div class="patient-avatar">{{ profile.prenom ? profile.prenom[0] : 'P' }}</div>
+      @for (item of historyItems; track item.id) {
+      <div class="consultation-row"
+        (click)="item.type === 'CONSULTATION' ? openConsultation(item.originalData.id) : null"
+        [style.cursor]="item.type === 'CONSULTATION' ? 'pointer' : 'default'">
+        <div class="patient-avatar" style="background: var(--bg-sec); color: var(--text-main);">{{ item.type ===
+          'CONSULTATION' ? '📋' : '📅' }}</div>
         <div class="consultation-info">
-          <span class="cinfo-id">Consultation #{{ c.id }}</span>
-          <span class="cinfo-date">{{ c.dateConsultation | date:'dd/MM/yyyy' }}</span>
-          <span class="cinfo-obj">{{ c.objectif }}</span>
+          <span class="cinfo-id">{{ item.title }}</span>
+          <span class="cinfo-date">{{ item.dateStr | date:'dd/MM/yyyy HH:mm' }}</span>
+          <span class="cinfo-obj">{{ item.subtitle }}</span>
         </div>
-        <span class="imc-pill">IMC : {{ c.imc | number:'1.1-1' }}</span>
+        @if (item.type === 'CONSULTATION') {
+        <span class="imc-pill">IMC : {{ item.originalData.imc | number:'1.1-1' }}</span>
         <span class="row-arrow">›</span>
+        } @else {
+        <span class="badge-status"
+          [ngClass]="{'pending': item.status === 'EN_ATTENTE', 'confirmed': item.status === 'CONFIRME', 'refused': item.status === 'REFUSE'}">
+          {{ item.status }}
+        </span>
+        }
       </div>
       }
-      @if (consultations.length === 0) {
-      <p class="empty-state">Aucune consultation dans l'historique</p>
+      @if (historyItems.length === 0) {
+      <p class="empty-state">Aucun historique disponible</p>
       }
     </div>
     }
@@ -455,53 +597,69 @@
       </div>
     </div>
 
-    <div class="repas-grid">
-      @for (repas of planAlimentaire.repas; track repas.id) {
-      <div class="repas-card">
-        <div class="repas-header">
-          <span class="repas-icon">{{ getRepasIcon(repas.typeRepas) }}</span>
-          <div>
-            <p class="repas-type">{{ getRepasLabel(repas.typeRepas) }}</p>
-            <p class="repas-cal">{{ repas.calories }} kcal</p>
-          </div>
+    @for (repas of planAlimentaire.repas; track repas.id) {
+    <div class="repas-card" [class.meal-eaten]="isMealEaten(repas.id)">
+      <div class="repas-header">
+        <span class="repas-icon">{{ getRepasIcon(repas.typeRepas) }}</span>
+        <div style="flex:1">
+          <p class="repas-type">{{ getRepasLabel(repas.typeRepas) }}</p>
+          <p class="repas-cal">{{ repas.calories }} kcal</p>
         </div>
-        
-        <div class="repas-macros">
-          <div class="macro-item">
-            <span class="macro-label">Protéines</span>
-            <span class="macro-val">{{ repas.proteines || 0 }}g</span>
-          </div>
-          <div class="macro-item">
-            <span class="macro-label">Glucides</span>
-            <span class="macro-val">{{ repas.glucides || 0 }}g</span>
-          </div>
-          <div class="macro-item">
-            <span class="macro-label">Lipides</span>
-            <span class="macro-val">{{ repas.lipides || 0 }}g</span>
-          </div>
+        <button class="meal-check-btn" [class.checked]="isMealEaten(repas.id)" (click)="toggleMealEaten(repas.id)">
+          {{ isMealEaten(repas.id) ? '✅' : '⬜' }}
+        </button>
+      </div>
+
+      <div class="repas-macros">
+        <div class="macro-item">
+          <span class="macro-label">Protéines</span>
+          <span class="macro-val">{{ repas.proteines || 0 }}g</span>
         </div>
-
-        <div class="repas-body">
-          <p class="section-subtitle">Aliments</p>
-          <ul class="repas-list">
-            @for (aliment of getAlimentsList(repas.aliments); track $index) {
-            <li><span class="check-icon">✓</span> {{ aliment }}</li>
-            }
-            @if (getAlimentsList(repas.aliments).length === 0) {
-            <li class="empty-li">Aucun aliment spécifié</li>
-            }
-          </ul>
-
-          @if (repas.notes) {
-          <div class="repas-notes">
-            <p class="section-subtitle">Notes</p>
-            <p class="notes-text">{{ repas.notes }}</p>
-          </div>
-          }
+        <div class="macro-item">
+          <span class="macro-label">Glucides</span>
+          <span class="macro-val">{{ repas.glucides || 0 }}g</span>
+        </div>
+        <div class="macro-item">
+          <span class="macro-label">Lipides</span>
+          <span class="macro-val">{{ repas.lipides || 0 }}g</span>
         </div>
       </div>
-      }
+
+      <div class="repas-body">
+        <p class="section-subtitle">Aliments</p>
+        <ul class="repas-list">
+          @for (aliment of getAlimentsList(repas.aliments); track $index) {
+          <li><span class="check-icon">✓</span> {{ aliment }}</li>
+          }
+          @if (getAlimentsList(repas.aliments).length === 0) {
+          <li class="empty-li">Aucun aliment spécifié</li>
+          }
+        </ul>
+
+        @if (repas.notes) {
+        <div class="repas-notes">
+          <p class="section-subtitle">Notes</p>
+          <p class="notes-text">{{ repas.notes }}</p>
+        </div>
+        }
+      </div>
     </div>
+    }
+    <!-- Progress bar showing meals eaten today -->
+    <div class="meals-progress-card">
+      <div class="meals-progress-header">
+        <span>🥗 Repas du jour</span>
+        <span class="meals-count">{{ eatenMeals.size }} / {{ planAlimentaire.repas.length }} repas</span>
+      </div>
+      <div class="tr-bar">
+        <div class="tr-fill food" [style.width.%]="dailyStats.nutrition" [class.full]="dailyStats.nutrition === 100">
+        </div>
+      </div>
+      <p class="meals-pct">{{ dailyStats.nutrition }}%
+        @if (dailyStats.nutrition === 100) { 🎉 Tous les repas complétés ! }
+      </p>
+    </div>
+
     } @else {
     <div class="plan-empty">
       <span class="plan-empty-icon">🥗</span>
@@ -552,7 +710,7 @@
             <span class="ex-category">{{ getExerciceCategorie(ex) }}</span>
           </div>
         </div>
-        
+
         <div class="ex-stats">
           @if (ex.series) {
           <div class="ex-stat-item">
@@ -610,31 +768,32 @@
     }
     }
 
-    <!-- ✅ MESSAGES NUTRITIONNISTE -->
+    <!-- ✅ MESSAGES NUTRITIONNISTE — fixed with proper @Input bindings -->
     @if (activeSection === 'messages-nutritionniste') {
+    <!-- Rebuild trigger -->
     <div style="height:100%;display:flex;flex-direction:column;">
-      <app-chat
-        [role]="'patient'"
-        [userId]="userId"
-        [conversationType]="'PATIENT_NUTRITIONIST'"
-        [patients]="nutritionnistes.map(n => ({ id: n.id, nom: (n.prenom ?? '') + ' ' + (n.nom ?? '') }))"
-        [initialPatientId]="nutritionnisteSelectionne?.id ?? nutritionnisteId">
-      </app-chat>
+      <app-conversation [role]="'PATIENT'" [userId]="userId"
+        [targetId]="(nutritionnisteSelectionne?.id ?? nutritionnisteId ?? 0)" [targets]="nutritionnistes">
+      </app-conversation>
     </div>
     }
 
-    <!-- ✅ MESSAGES COACH -->
+    <!-- ✅ MESSAGES COACH — fixed with proper @Input bindings -->
     @if (activeSection === 'messages-coach') {
     <div style="height:100%;display:flex;flex-direction:column;">
-      <app-chat
-        [role]="'patient'"
-        [userId]="userId"
-        [conversationType]="'CLIENT_COACH'"
-        [patients]="coaches.map(c => ({ id: c.id, nom: (c.prenom ?? '') + ' ' + (c.nom ?? '') }))"
-        [initialPatientId]="coachSelectionne?.id ?? coachId">
-      </app-chat>
+      <app-conversation [role]="'PATIENT'" [userId]="userId" [targetId]="(coachSelectionne?.id ?? coachId ?? 0)"
+        [targetType]="'COACH'" [targets]="coaches">
+      </app-conversation>
     </div>
     }
+    <div class="sidebar-section-label">COMPTE</div>
+    <div class="sidebar-menu">
+      <button class="nav-item" [class.active]="activeSection === 'parametres'" (click)="goTo('parametres')">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Paramètres</span>
+      </button>
+    </div>
+
 
     <!-- PROFIL -->
     @if (activeSection === 'profile') {
@@ -749,14 +908,16 @@
       </div>
       <div class="profile-edit-field">
         <label class="pf-label">Nouveau mot de passe</label>
-        <input class="pf-input" type="password" [(ngModel)]="newPassword" placeholder="Laisser vide pour ne pas changer" />
+        <input class="pf-input" type="password" [(ngModel)]="newPassword"
+          placeholder="Laisser vide pour ne pas changer" />
       </div>
     </div>
 
     <!-- ── ABONNEMENT ── -->
     <div class="profile-section-title">Abonnement</div>
     <div class="subscription-plans-grid">
-      <div class="sub-plan-card" [class.current]="(profile.typeAbonnement || 'Standard') === 'Standard'" (click)="changePlan('MOIS_1')">
+      <div class="sub-plan-card" [class.current]="(profile.typeAbonnement || 'Standard') === 'Standard'"
+        (click)="changePlan('MOIS_1')">
         <div class="sub-plan-label">1 MOIS</div>
         <div class="sub-plan-price">300 <span>DT</span></div>
         <div class="sub-plan-per">300 DT / mois</div>
@@ -780,7 +941,8 @@
         <div class="sub-plan-badge">✓ Actuel</div>
         }
       </div>
-      <div class="sub-plan-card featured" [class.current]="profile.typeAbonnement === 'AN_1'" (click)="changePlan('AN_1')">
+      <div class="sub-plan-card featured" [class.current]="profile.typeAbonnement === 'AN_1'"
+        (click)="changePlan('AN_1')">
         <div class="sub-plan-label">1 AN ⭐</div>
         <div class="sub-plan-price">2160 <span>DT</span></div>
         <div class="sub-plan-per">180 DT / mois</div>
@@ -798,6 +960,214 @@
       <span class="save-error">❌ Erreur lors de la sauvegarde</span>
       }
       <button class="btn-primary" (click)="saveProfile()">💾 Enregistrer les modifications</button>
+    </div>
+    }
+    <!-- ══ PARAMÈTRES ══ -->
+    @if (activeSection === 'parametres') {
+    <div class="params-wrapper">
+      <div class="params-header">
+        <div class="params-header-left">
+          <div class="params-avatar">
+            {{ (profile.prenom[0] || '') + (profile.nom[0] || '') }}
+          </div>
+          <div>
+            <h2 class="params-title">{{ profile.prenom }} {{ profile.nom }}</h2>
+            <p class="params-subtitle">Patient · {{ profile.typeAbonnement || 'Standard' }}</p>
+          </div>
+        </div>
+        <button class="btn-logout" (click)="logout()">
+          <span>🚪</span> Se déconnecter
+        </button>
+      </div>
+
+      @if (paramSuccess) {
+      <div class="alert-success" style="margin-bottom:16px">✓ {{ paramSuccess }}</div>
+      }
+      @if (paramError) {
+      <div class="alert-error" style="margin-bottom:16px">⚠ {{ paramError }}</div>
+      }
+
+      <div class="params-layout">
+        <div class="params-tabs-sidebar">
+          <div class="params-tab-item" [class.active]="activeParamsTab==='compte'" (click)="setParamsTab('compte')">
+            <span>👤</span> Mon compte
+          </div>
+          <div class="params-tab-item" [class.active]="activeParamsTab==='securite'" (click)="setParamsTab('securite')">
+            <span>🔒</span> Sécurité
+          </div>
+          <div class="params-tab-item" [class.active]="activeParamsTab==='notifs'" (click)="setParamsTab('notifs')">
+            <span>🔔</span> Notifications
+          </div>
+          <div class="params-tab-item" [class.active]="activeParamsTab==='prefs'" (click)="setParamsTab('prefs')">
+            <span>🎨</span> Préférences
+          </div>
+          <div class="params-tab-item params-tab-danger" (click)="logout()">
+            <span>🚪</span> Déconnexion
+          </div>
+        </div>
+
+        <div class="params-content">
+
+          @if (activeParamsTab === 'compte') {
+          <div class="params-section">
+            <h3 class="params-section-title">Informations personnelles</h3>
+            <p class="params-section-desc">Modifiez vos informations de profil.</p>
+            <div class="params-avatar-block">
+              <div class="params-avatar-big">{{ (profile.prenom[0] || '') + (profile.nom[0] || '') }}</div>
+              <div>
+                <p class="params-avatar-name">{{ profile.prenom }} {{ profile.nom }}</p>
+                <p class="params-avatar-role">Patient · {{ profile.typeAbonnement || 'Standard' }}</p>
+              </div>
+            </div>
+            <div class="params-form-grid">
+              <div class="form-group">
+                <label>Prénom</label>
+                <input type="text" [(ngModel)]="profile.prenom" placeholder="Prénom">
+              </div>
+              <div class="form-group">
+                <label>Nom</label>
+                <input type="text" [(ngModel)]="profile.nom" placeholder="Nom">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" [(ngModel)]="profile.email" placeholder="email@exemple.com">
+              </div>
+              <div class="form-group">
+                <label>Téléphone</label>
+                <input type="tel" [(ngModel)]="profile.phone" placeholder="+216 XX XXX XXX">
+              </div>
+              <div class="form-group params-full">
+                <label>Objectif</label>
+                <select [(ngModel)]="profile.goal">
+                  <option value="">Sélectionner</option>
+                  <option value="Perte de poids">Perte de poids</option>
+                  <option value="Prise de masse">Prise de masse</option>
+                  <option value="Maintien">Maintien</option>
+                  <option value="Bien-être">Bien-être</option>
+                </select>
+              </div>
+            </div>
+            <div class="params-actions">
+              <button class="btn-save-params" (click)="saveProfile()">💾 Enregistrer le profil</button>
+            </div>
+          </div>
+          }
+
+          @if (activeParamsTab === 'securite') {
+          <div class="params-section">
+            <h3 class="params-section-title">Changer le mot de passe</h3>
+            <p class="params-section-desc">Minimum 8 caractères.</p>
+            <div class="params-form-col">
+              <div class="form-group">
+                <label>Nouveau mot de passe</label>
+                <input type="password" [(ngModel)]="passwordForm.nouveau" placeholder="••••••••">
+              </div>
+              <div class="form-group">
+                <label>Confirmer le mot de passe</label>
+                <input type="password" [(ngModel)]="passwordForm.confirmer" placeholder="••••••••">
+              </div>
+            </div>
+            <div class="params-password-tips">
+              <p class="params-tip">✓ Au moins 8 caractères</p>
+              <p class="params-tip">✓ Une lettre majuscule</p>
+              <p class="params-tip">✓ Un chiffre ou caractère spécial</p>
+            </div>
+            <div class="params-actions">
+              <button class="btn-save-params" (click)="savePassword()">🔒 Modifier le mot de passe</button>
+            </div>
+          </div>
+          }
+
+          @if (activeParamsTab === 'notifs') {
+          <div class="params-section">
+            <h3 class="params-section-title">Préférences de notifications</h3>
+            <p class="params-section-desc">Choisissez comment être notifié.</p>
+            <div class="params-notif-group">
+              <p class="params-notif-category">📧 Notifications par email</p>
+              <div class="params-toggle-row">
+                <div class="params-toggle-info">
+                  <span class="params-toggle-label">Nouveaux rendez-vous</span>
+                  <span class="params-toggle-desc">Recevoir un email lors d'une confirmation de RDV</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" [(ngModel)]="notifPrefs.emailRdv">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="params-toggle-row">
+                <div class="params-toggle-info">
+                  <span class="params-toggle-label">Nouveaux messages</span>
+                  <span class="params-toggle-desc">Recevoir un email pour chaque nouveau message</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" [(ngModel)]="notifPrefs.emailMessage">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="params-toggle-row">
+                <div class="params-toggle-info">
+                  <span class="params-toggle-label">Rapports & plans</span>
+                  <span class="params-toggle-desc">Recevoir un email quand un plan est créé</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" [(ngModel)]="notifPrefs.emailRapport">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+            <div class="params-actions">
+              <button class="btn-save-params" (click)="saveNotifs()">🔔 Enregistrer</button>
+            </div>
+          </div>
+          }
+
+          @if (activeParamsTab === 'prefs') {
+          <div class="params-section">
+            <h3 class="params-section-title">Préférences d'affichage</h3>
+            <p class="params-section-desc">Personnalisez l'interface.</p>
+            <div class="pref-block">
+              <p class="pref-block-label" style="margin-bottom:12px;">🌐 Langue</p>
+              <div style="display:flex; gap:10px;">
+                <button type="button"
+                  [style.background]="previewLangue==='fr' ? 'linear-gradient(135deg,#a855f7,#ec4899)' : '#f3e8ff'"
+                  [style.color]="previewLangue==='fr' ? '#fff' : '#a855f7'"
+                  style="border:1.5px solid #a855f7; border-radius:8px; padding:8px 20px; font-size:0.9rem; cursor:pointer; font-weight:600;"
+                  (click)="onLangueChange('fr')">🇫🇷 Français</button>
+                <button type="button"
+                  [style.background]="previewLangue==='en' ? 'linear-gradient(135deg,#a855f7,#ec4899)' : '#f3e8ff'"
+                  [style.color]="previewLangue==='en' ? '#fff' : '#a855f7'"
+                  style="border:1.5px solid #a855f7; border-radius:8px; padding:8px 20px; font-size:0.9rem; cursor:pointer; font-weight:600;"
+                  (click)="onLangueChange('en')">🇬🇧 English</button>
+                <button type="button"
+                  [style.background]="previewLangue==='ar' ? 'linear-gradient(135deg,#a855f7,#ec4899)' : '#f3e8ff'"
+                  [style.color]="previewLangue==='ar' ? '#fff' : '#a855f7'"
+                  style="border:1.5px solid #a855f7; border-radius:8px; padding:8px 20px; font-size:0.9rem; cursor:pointer; font-weight:600;"
+                  (click)="onLangueChange('ar')">🇹🇳 العربية</button>
+              </div>
+            </div>
+            <div class="pref-block" style="margin-top:24px;">
+              <p class="pref-block-label" style="margin-bottom:12px;">🎨 Thème</p>
+              <div style="display:flex; gap:10px;">
+                <button type="button"
+                  [style.background]="previewTheme==='light' ? 'linear-gradient(135deg,#a855f7,#ec4899)' : '#f3e8ff'"
+                  [style.color]="previewTheme==='light' ? '#fff' : '#a855f7'"
+                  style="border:1.5px solid #a855f7; border-radius:8px; padding:8px 20px; font-size:0.9rem; cursor:pointer; font-weight:600;"
+                  (click)="onThemeChange('light')">☀️ Clair</button>
+                <button type="button"
+                  [style.background]="previewTheme==='dark' ? 'linear-gradient(135deg,#a855f7,#ec4899)' : '#f3e8ff'"
+                  [style.color]="previewTheme==='dark' ? '#fff' : '#a855f7'"
+                  style="border:1.5px solid #a855f7; border-radius:8px; padding:8px 20px; font-size:0.9rem; cursor:pointer; font-weight:600;"
+                  (click)="onThemeChange('dark')">🌙 Sombre</button>
+              </div>
+            </div>
+            <div class="params-actions">
+              <button class="btn-save-params" (click)="savePrefs()">🎨 Enregistrer</button>
+            </div>
+          </div>
+          }
+
+        </div>
+      </div>
     </div>
     }
 
@@ -902,9 +1272,9 @@
         }
         <div class="cal-footer-btns">
           <button class="btn-cancel" (click)="closeCalendar()">Annuler</button>
-          <button class="btn-confirm" [disabled]="!selectedDate || !selectedSlot || !rdvMotif.trim()"
+          <button class="btn-confirm" [disabled]="!selectedDate || !selectedSlot || !rdvMotif.trim() || confirmingRdv"
             (click)="confirmRdv()">
-            Envoyer la demande
+            {{ confirmingRdv ? 'Envoi...' : 'Envoyer la demande' }}
           </button>
         </div>
       </div>

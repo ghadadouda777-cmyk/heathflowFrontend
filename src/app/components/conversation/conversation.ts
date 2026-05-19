@@ -48,6 +48,7 @@ export class ConversationComponent implements OnInit, OnDestroy, AfterViewChecke
 @Input() role: string = '';          // ← fix erreur patient-dashboard
 @Input() userId: any = null;         // ← fix erreur patient-dashboard  
 @Input() targetId: number = 0;       // ← fix erreur patient-dashboard
+  @Input() targetType: string = '';    // ← dynamic binding for coach/nutritionist type
   currentRole: 'NUTRITIONIST' | 'PATIENT' | 'COACH' = 'NUTRITIONIST';
   currentUserId: any = 1;
   nutritionistId: any = 1;

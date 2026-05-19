@@ -7,7 +7,7 @@ import { RendezVous } from '../../interfaces/rendez-vous';
 export class RendezVousService {
   private api = 'http://localhost:8084/api/rendez-vous';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -16,7 +16,7 @@ export class RendezVousService {
       Authorization: `Bearer ${token}`
     });
   }
- getAllCoaches(): Observable<any[]> {
+  getAllCoaches(): Observable<any[]> {
     return this.http.get<any[]>(`${this.api}/coachs`, { headers: this.getHeaders() });
   }
 

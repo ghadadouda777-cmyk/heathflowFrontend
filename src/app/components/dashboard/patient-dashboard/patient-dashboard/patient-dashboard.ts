@@ -2,22 +2,19 @@ import { Component, OnInit, OnDestroy, PLATFORM_ID, inject } from '@angular/core
 import { CommonModule, DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { RendezVousService } from '../../../services/rendez-vous';
 import { ConsultationService } from '../../../services/consultation';
-import { ChatComponent } from '../../../chat/chat.component';
-import { NotificationBellComponent } from '../../../notification-bell/notification-bell.component';
+import { ConversationComponent } from '../../../conversation/conversation';
 
 import { RendezVous } from '../../../../interfaces/rendez-vous';
 import { Consultation } from '../../../../interfaces/consultation';
 import { Patient, PatientService } from '../../../services/patient';
-import { PatientInfo } from '../../../../interfaces/PatientInfo';
 import { SuiviService } from '../../../../services/suivi';
 import { ObjectifService } from '../../../../services/objectif-personnel';
-import { SuiviQuotidien } from '../../../../interfaces/suivi-quotidien';
-import { ObjectifPersonnel } from '../../../../interfaces/objectif-personnel';
+import { PatientInfo } from '../../../../interfaces/PatientInfo';
 
 interface RepasJour {
   id: number;
@@ -64,6 +61,24 @@ interface ProgrammeEntrainement {
   exercices: Exercice[];
 }
 
+export interface AgendaNote {
+  id: number;
+  text: string;
+  completed: boolean;
+  date: string;
+}
+
+export interface HistoryItem {
+  id: string | number; // To uniquely identify (maybe prefix with 'C-' or 'R-')
+  type: 'CONSULTATION' | 'RDV';
+  dateStr: string;
+  timestamp: number;
+  title: string;
+  subtitle: string;
+  status?: string;
+  originalData: any; // The raw Consultation or RendezVous
+}
+
 export type Section =
   | 'dashboard'
   | 'rdv-nutritionniste'
@@ -72,12 +87,13 @@ export type Section =
   | 'programme'
   | 'messages-nutritionniste'
   | 'messages-coach'
-  | 'profile';
+  | 'profile'
+  | 'parametres';
 
 @Component({
   selector: 'app-patient-dashboard',
   standalone: true,
-  imports: [CommonModule, DatePipe, DecimalPipe, FormsModule, ChatComponent, NotificationBellComponent],
+  imports: [CommonModule, DecimalPipe, FormsModule, ConversationComponent, RouterLink],
   templateUrl: './patient-dashboard.html',
   styleUrls: ['./patient-dashboard.css']
 })
@@ -88,25 +104,52 @@ export class PatientDashboard implements OnInit, OnDestroy {
   nutritionnisteId: string | number | null = null;
   coachId: string | number | null = null;
 
-  activeSection: Section = 'dashboard';
+  activeSection: any = 'dashboard';
 
+  // RDV Nutritionniste
   rdvNutriEnAttente: RendezVous[] = [];
   rdvNutriConfirmes: RendezVous[] = [];
   rdvNutriRefuses: RendezVous[] = [];
   activeTabNutri: 'attente' | 'confirme' | 'refuse' = 'attente';
 
+  // RDV Coach
   rdvCoachEnAttente: RendezVous[] = [];
   rdvCoachConfirmes: RendezVous[] = [];
   rdvCoachRefuses: RendezVous[] = [];
   activeTabCoach: 'attente' | 'confirme' | 'refuse' = 'attente';
 
   takenSlotsNutri: { date: string; heure: string }[] = [];
+
+  // Suivi Quotidien (Daily Tracking)
+  dailyStats = {
+    water: 0, goalWater: 2.5,
+    activity: 0, goalActivity: 5,
+    nutrition: 0, // percentage
+    sleep: 0, goalSleep: 8
+  };
+  hasDailyData = false;
+  motivationLevel = 80;
+  evolutionData = [
+    { jour: 'Lun', pct: 65 },
+    { jour: 'Mar', pct: 80 },
+    { jour: 'Mer', pct: 85 },
+    { jour: 'Jeu', pct: 70 },
+    { jour: 'Ven', pct: 75 },
+    { jour: 'Sam', pct: 90 },
+    { jour: 'Dim', pct: 80 }
+  ];
   takenSlotsCoach: { date: string; heure: string }[] = [];
+  confirmingRdv = false;
 
   consultations: Consultation[] = [];
   derniereConsultation: Consultation | null = null;
   selectedConsultation: Consultation | null = null;
   showConsultationModal = false;
+
+  agendaNotes: AgendaNote[] = [];
+  newNoteText = '';
+
+  historyItems: HistoryItem[] = [];
 
   planAlimentaire: PlanAlimentaireDetail | null = null;
   planLoading = false;
@@ -171,27 +214,6 @@ export class PatientDashboard implements OnInit, OnDestroy {
 
   private pollSub: Subscription | null = null;
 
-  // ── Suivi Quotidien ───────────────────────────────────────────────────────
-  suivi: SuiviQuotidien | null = null;
-  objectifs: ObjectifPersonnel | null = null;
-
-  // Valeurs affichées (avec fallbacks)
-  get eauBue(): number       { return this.suivi?.nb_coupes_bues      ?? 0; }
-  get eauObjectif(): number  { return this.objectifs?.objectif_coupes_eau ?? 8; }
-  get eauPct(): number       { return this.eauObjectif > 0 ? Math.min(100, Math.round((this.eauBue / this.eauObjectif) * 100)) : 0; }
-
-  get exoFaits(): number     { return this.suivi?.nb_exercices_faites  ?? 0; }
-  get exoObjectif(): number  { return this.objectifs?.objectif_exercices_semaine ?? 5; }
-  get exoPct(): number       { return this.exoObjectif > 0 ? Math.min(100, Math.round((this.exoFaits / this.exoObjectif) * 100)) : 0; }
-
-  get sommeil(): number      { return this.suivi?.nb_heures_sommeil    ?? 0; }
-  get sommeilObjectif(): number { return this.objectifs?.objectif_heures_sommeil ?? 8; }
-  get sommeilPct(): number   { return this.sommeilObjectif > 0 ? Math.min(100, Math.round((this.sommeil / this.sommeilObjectif) * 100)) : 0; }
-
-  get calories(): number     { return this.suivi?.calories_consommes   ?? 0; }
-  get caloriesObjectif(): number { return this.objectifs?.objectif_calories ?? 2000; }
-  get caloriesPct(): number  { return this.caloriesObjectif > 0 ? Math.min(100, Math.round((this.calories / this.caloriesObjectif) * 100)) : 0; }
-
   private platformId = inject(PLATFORM_ID);
 
   constructor(
@@ -199,9 +221,9 @@ export class PatientDashboard implements OnInit, OnDestroy {
     private consultService: ConsultationService,
     private http: HttpClient,
     private patientService: PatientService,
-    private route: ActivatedRoute,
     private suiviService: SuiviService,
-    private objectifService: ObjectifService
+    private objectifService: ObjectifService,
+    private route: ActivatedRoute
   ) { }
 
   private getHeaders(): HttpHeaders {
@@ -219,6 +241,11 @@ export class PatientDashboard implements OnInit, OnDestroy {
     } else {
       this.userId = localStorage.getItem('userId') ?? '';
     }
+
+    // Restore saved theme preference
+    const savedTheme = localStorage.getItem('patientTheme') ?? 'light';
+    this.displayPrefs.theme = savedTheme;
+    this.previewTheme = savedTheme;
 
     console.log('✅ PatientDashboard — userId =', this.userId);
 
@@ -238,6 +265,14 @@ export class PatientDashboard implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.pollSub?.unsubscribe();
   }
+  loadAllRdvForStats(): void {
+    this.rdvService.getByPatient(this.userId).subscribe((data: RendezVous[]) => {
+      this.rdvNutriConfirmes = data.filter(r => r.statut === 'CONFIRME' && r.nutritionnisteId);
+      this.rdvCoachConfirmes = data.filter(r => r.statut === 'CONFIRME' && r.coachId);
+      this.rdvNutriEnAttente = data.filter(r => r.statut === 'EN_ATTENTE' && r.nutritionnisteId);
+      this.rdvCoachEnAttente = data.filter(r => r.statut === 'EN_ATTENTE' && r.coachId);
+    });
+  }
 
   loadAll(): void {
     this.loadConsultations();
@@ -245,20 +280,34 @@ export class PatientDashboard implements OnInit, OnDestroy {
     this.loadProgramme();
     this.loadNutritionnistes();
     this.loadCoaches();
-    this.loadSuivi();
+    this.loadDailyTracking();
+    this.loadAgendaNotes();
+    this.loadHistoryItems();
+    this.loadAllRdvForStats();
   }
 
-  loadSuivi(): void {
+  loadDailyTracking(): void {
     if (!this.userId) return;
 
-    this.suiviService.getSuiviDuJour(this.userId).subscribe({
-      next: (data) => { this.suivi = data; },
-      error: () => { this.suivi = null; }
+    // Load goals and suivi independently — a missing objectif should not block suivi display
+    this.objectifService.getObjectif(this.userId).subscribe({
+      next: (goals: any) => {
+        this.dailyStats.goalWater = goals.objectif_coupes_eau || 2.5;
+        this.dailyStats.goalSleep = goals.objectif_heures_sommeil || 8;
+        this.dailyStats.goalActivity = goals.objectif_exercices_semaine || 5;
+      },
+      error: () => { /* use defaults if no objectif exists */ }
     });
 
-    this.objectifService.getObjectif(this.userId).subscribe({
-      next: (data) => { this.objectifs = data; },
-      error: () => { this.objectifs = null; }
+    this.suiviService.getSuiviDuJour(this.userId).subscribe({
+      next: (suivi: any) => {
+        this.dailyStats.water = suivi.nb_coupes_bues || 0;
+        this.dailyStats.sleep = suivi.nb_heures_sommeil || 0;
+        this.dailyStats.activity = suivi.nb_exercices_faites || 0;
+        this.updateNutritionPercent();
+        this.hasDailyData = (this.dailyStats.water > 0 || this.dailyStats.sleep > 0 || this.dailyStats.activity > 0);
+      },
+      error: () => { /* no suivi for today yet — leave at 0 */ }
     });
   }
 
@@ -345,11 +394,8 @@ export class PatientDashboard implements OnInit, OnDestroy {
 
   loadRdvNutri(nutriId?: number | string): void {
     const idToFilter = String(nutriId ?? this.nutritionnisteId);
-    this.rdvService.getAll().subscribe((data: RendezVous[]) => {
-      const mine = data.filter(
-        r => String(r.userId) === String(this.userId) &&
-          String(r.nutritionnisteId) === idToFilter
-      );
+    this.rdvService.getByPatient(this.userId).subscribe((data: RendezVous[]) => {
+      const mine = data.filter(r => String(r.nutritionnisteId) === idToFilter);
       this.rdvNutriEnAttente = mine.filter(r => r.statut === 'EN_ATTENTE');
       this.rdvNutriConfirmes = mine.filter(r => r.statut === 'CONFIRME');
       this.rdvNutriRefuses = mine.filter(r => r.statut === 'REFUSE');
@@ -363,11 +409,8 @@ export class PatientDashboard implements OnInit, OnDestroy {
   loadRdvCoach(coachId?: number | string): void {
     const idToFilter = String(coachId ?? this.coachId);
     if (!idToFilter || idToFilter === 'null') return;
-    this.rdvService.getAll().subscribe((data: RendezVous[]) => {
-      const mine = data.filter(
-        r => String(r.userId) === String(this.userId) &&
-          String(r.coachId) === idToFilter
-      );
+    this.rdvService.getByPatient(this.userId).subscribe((data: RendezVous[]) => {
+      const mine = data.filter(r => String(r.coachId) === idToFilter);
       this.rdvCoachEnAttente = mine.filter(r => r.statut === 'EN_ATTENTE');
       this.rdvCoachConfirmes = mine.filter(r => r.statut === 'CONFIRME');
       this.rdvCoachRefuses = mine.filter(r => r.statut === 'REFUSE');
@@ -389,6 +432,54 @@ export class PatientDashboard implements OnInit, OnDestroy {
     });
   }
 
+  loadHistoryItems(): void {
+    if (!this.userId) return;
+
+    let consults: Consultation[] = [];
+    let rdvs: RendezVous[] = [];
+
+    // Fetch Consultations
+    this.consultService.getAll().subscribe((cData) => {
+      consults = cData.filter(c => String(c.userId) === String(this.userId));
+
+      // Fetch RDVs
+      this.rdvService.getAll().subscribe((rData) => {
+        rdvs = rData.filter(r => String(r.userId) === String(this.userId));
+
+        // Merge and Map
+        const items: HistoryItem[] = [];
+
+        consults.forEach(c => {
+          items.push({
+            id: `C-${c.id}`,
+            type: 'CONSULTATION',
+            dateStr: c.dateConsultation,
+            timestamp: new Date(c.dateConsultation).getTime(),
+            title: `Consultation #${c.id}`,
+            subtitle: c.objectif || 'Suivi général',
+            originalData: c
+          });
+        });
+
+        rdvs.forEach(r => {
+          items.push({
+            id: `R-${r.id}`,
+            type: 'RDV',
+            dateStr: r.dateHeure,
+            timestamp: new Date(r.dateHeure).getTime(),
+            title: `Rendez-vous ${r.typeIntervenant === 'NUTRITIONNISTE' ? 'Nutritionniste' : 'Coach'}`,
+            subtitle: r.motif || 'Séance',
+            status: r.statut,
+            originalData: r
+          });
+        });
+
+        // Sort descending by date
+        this.historyItems = items.sort((a, b) => b.timestamp - a.timestamp);
+      });
+    });
+  }
+
   openConsultation(id: number): void {
     this.consultService.getById(id).subscribe((data: Consultation) => {
       this.selectedConsultation = data;
@@ -400,6 +491,50 @@ export class PatientDashboard implements OnInit, OnDestroy {
     this.showConsultationModal = false;
     this.selectedConsultation = null;
   }
+
+  // --- AGENDA NOTES LOGIC ---
+
+  loadAgendaNotes(): void {
+    if (!isPlatformBrowser(this.platformId) || !this.userId) return;
+    const stored = localStorage.getItem(`agendaNotes_${this.userId}`);
+    if (stored) {
+      try {
+        this.agendaNotes = JSON.parse(stored);
+      } catch (e) {
+        this.agendaNotes = [];
+      }
+    }
+  }
+
+  saveAgendaNotes(): void {
+    if (!isPlatformBrowser(this.platformId) || !this.userId) return;
+    localStorage.setItem(`agendaNotes_${this.userId}`, JSON.stringify(this.agendaNotes));
+  }
+
+  addNote(): void {
+    const text = this.newNoteText.trim();
+    if (!text) return;
+    this.agendaNotes.unshift({
+      id: Date.now(),
+      text,
+      completed: false,
+      date: new Date().toISOString()
+    });
+    this.newNoteText = '';
+    this.saveAgendaNotes();
+  }
+
+  toggleNote(note: AgendaNote): void {
+    note.completed = !note.completed;
+    this.saveAgendaNotes();
+  }
+
+  deleteNote(id: number): void {
+    this.agendaNotes = this.agendaNotes.filter(n => n.id !== id);
+    this.saveAgendaNotes();
+  }
+
+  // --------------------------
 
   loadNutritionnistes(): void {
     this.rdvService.getAllNutritionnistes().subscribe((data: any[]) => {
@@ -463,6 +598,8 @@ export class PatientDashboard implements OnInit, OnDestroy {
             new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime()
           )[0]
           : null;
+        this.eatenMeals.clear();
+        this.updateNutritionPercent();
         this.planLoading = false;
       },
       error: () => { this.planLoading = false; }
@@ -519,7 +656,7 @@ export class PatientDashboard implements OnInit, OnDestroy {
     return 'Général';
   }
 
-  goTo(section: Section): void {
+  goTo(section: any): void {
     this.activeSection = section;
   }
 
@@ -578,7 +715,10 @@ export class PatientDashboard implements OnInit, OnDestroy {
   }
 
   confirmRdv(): void {
+    if (this.confirmingRdv) return;
     if (!this.selectedDate || !this.selectedSlot || !this.rdvMotif.trim()) return;
+
+    this.confirmingRdv = true;
 
     const [h, m] = this.selectedSlot.split(':');
     const d = new Date(this.selectedDate);
@@ -603,15 +743,37 @@ export class PatientDashboard implements OnInit, OnDestroy {
       rdv.coachId = String(this.coachSelectionne?.id ?? this.coachId);
     }
 
+    // Optimistic update — show the new RDV immediately without waiting for reload
+    const optimisticRdv: RendezVous = { ...rdv, id: Date.now() } as any;
+    if (this.calendarTarget === 'nutritionniste') {
+      this.rdvNutriEnAttente = [...this.rdvNutriEnAttente, optimisticRdv];
+      this.takenSlotsNutri = [...this.takenSlotsNutri, { date: dateHeure.substring(0, 10), heure: this.selectedSlot }];
+    } else {
+      this.rdvCoachEnAttente = [...this.rdvCoachEnAttente, optimisticRdv];
+      this.takenSlotsCoach = [...this.takenSlotsCoach, { date: dateHeure.substring(0, 10), heure: this.selectedSlot }];
+    }
+    this.confirmationDone = true;
+    this.confirmationError = false;
+    this.confirmingRdv = false;
+
     this.rdvService.create(rdv).subscribe({
-      next: () => {
-        this.confirmationDone = true;
-        this.confirmationError = false;
-        if (this.calendarTarget === 'nutritionniste') this.loadRdvNutri(nutriId);
-        else this.loadRdvCoach(this.coachSelectionne?.id ?? this.coachId);
+      next: (saved) => {
+        // Replace optimistic entry with real one from server
+        if (this.calendarTarget === 'nutritionniste') {
+          this.rdvNutriEnAttente = this.rdvNutriEnAttente.map(r => r.id === optimisticRdv.id ? saved : r);
+          this.loadRdvNutri(nutriId);
+        } else {
+          this.rdvCoachEnAttente = this.rdvCoachEnAttente.map(r => r.id === optimisticRdv.id ? saved : r);
+          this.loadRdvCoach(this.coachSelectionne?.id ?? this.coachId);
+        }
       },
       error: () => {
-        this.confirmationDone = true;
+        // Rollback optimistic update on failure
+        if (this.calendarTarget === 'nutritionniste') {
+          this.rdvNutriEnAttente = this.rdvNutriEnAttente.filter(r => r.id !== optimisticRdv.id);
+        } else {
+          this.rdvCoachEnAttente = this.rdvCoachEnAttente.filter(r => r.id !== optimisticRdv.id);
+        }
         this.confirmationError = true;
       }
     });
@@ -695,4 +857,162 @@ export class PatientDashboard implements OnInit, OnDestroy {
   get totalRdvCoach(): number {
     return this.rdvCoachEnAttente.length + this.rdvCoachConfirmes.length + this.rdvCoachRefuses.length;
   }
+  addWater(): void {
+    this.suiviService.incrementEau(this.userId).subscribe({
+      next: (data: any) => {
+        this.dailyStats.water = data.nb_coupes_bues;
+        this.hasDailyData = true;
+      }
+    });
+  }
+
+  addExercice(): void {
+    this.suiviService.incrementExercice(this.userId).subscribe({
+      next: (data: any) => {
+        this.dailyStats.activity = data.nb_exercices_faites;
+        this.hasDailyData = true;
+      }
+    });
+  }
+
+  sleepInput: number | null = null;
+
+  logSleep(): void {
+    if (this.sleepInput !== null && this.sleepInput >= 0) {
+      this.suiviService.updateSommeil(this.userId, this.sleepInput).subscribe({
+        next: (data: any) => {
+          this.dailyStats.sleep = data.nb_heures_sommeil;
+          this.sleepInput = null;
+          this.hasDailyData = true;
+        }
+      });
+    }
+  }
+
+
+  // Track eaten meals for today
+  eatenMeals: Set<number> = new Set();
+
+  toggleMealEaten(repasId: number): void {
+    if (this.eatenMeals.has(repasId)) {
+      this.eatenMeals.delete(repasId);
+    } else {
+      this.eatenMeals.add(repasId);
+    }
+    this.updateNutritionPercent();
+  }
+
+  updateNutritionPercent(): void {
+    if (!this.planAlimentaire || this.planAlimentaire.repas.length === 0) {
+      this.dailyStats.nutrition = 0;
+      return;
+    }
+    const total = this.planAlimentaire.repas.length;
+    const eaten = this.eatenMeals.size;
+    this.dailyStats.nutrition = Math.round((eaten / total) * 100);
+  }
+
+  isMealEaten(repasId: number): boolean {
+    return this.eatenMeals.has(repasId);
+  }
+
+  activeParamsTab: 'compte' | 'securite' | 'notifs' | 'prefs' = 'compte';
+  paramSuccess = '';
+  paramError = '';
+
+  passwordForm = {
+    nouveau: '',
+    confirmer: ''
+  };
+
+  notifPrefs = {
+    emailRdv: true,
+    emailMessage: true,
+    emailRapport: false,
+    smsRdv: false,
+    smsMessage: false
+  };
+
+  displayPrefs = {
+    langue: 'fr',
+    theme: 'light'
+  };
+
+  previewTheme = 'light';
+  previewLangue = 'fr';
+
+  setParamsTab(tab: 'compte' | 'securite' | 'notifs' | 'prefs'): void {
+    this.activeParamsTab = tab;
+    this.paramSuccess = '';
+    this.paramError = '';
+  }
+
+  savePassword(): void {
+    this.paramError = '';
+    if (!this.passwordForm.nouveau || !this.passwordForm.confirmer) {
+      this.paramError = 'Veuillez remplir tous les champs.'; return;
+    }
+    if (this.passwordForm.nouveau !== this.passwordForm.confirmer) {
+      this.paramError = 'Les mots de passe ne correspondent pas.'; return;
+    }
+    if (this.passwordForm.nouveau.length < 8) {
+      this.paramError = 'Minimum 8 caractères.'; return;
+    }
+    const email = this.profile.email || localStorage.getItem('email') || '';
+    this.http.post('/api/auth/reset-password', {
+      email,
+      newPassword: this.passwordForm.nouveau
+    }, { headers: this.getHeaders() }).subscribe({
+      next: () => {
+        this.paramSuccess = 'Mot de passe modifié avec succès !';
+        this.passwordForm = { nouveau: '', confirmer: '' };
+        setTimeout(() => this.paramSuccess = '', 3000);
+      },
+      error: (err) => {
+        this.paramError = err.error?.error || 'Erreur lors de la modification.';
+      }
+    });
+  }
+
+  saveNotifs(): void {
+    this.paramSuccess = 'Préférences de notifications enregistrées !';
+    setTimeout(() => this.paramSuccess = '', 3000);
+  }
+
+  onThemeChange(value: string): void {
+    this.previewTheme = value;
+    this.displayPrefs.theme = value;
+    localStorage.setItem('patientTheme', value);
+  }
+
+  onLangueChange(value: string): void {
+    this.previewLangue = value;
+    this.displayPrefs.langue = value;
+  }
+
+  savePrefs(): void {
+    this.paramSuccess = 'Préférences enregistrées !';
+    setTimeout(() => this.paramSuccess = '', 3000);
+  }
+
+  getMotivationLabel(): string {
+    if (this.motivationLevel >= 80) return '🔥 Au top !';
+    if (this.motivationLevel >= 50) return '⚡ Motivé';
+    return '🌱 Besoin de boost';
+  }
+
+  getMotivationQuote(): string {
+    if (this.motivationLevel >= 80) return 'Rien ne peut vous arrêter ! Continuez ainsi ! 🔥';
+    if (this.motivationLevel >= 50) return 'Bon rythme ! Un petit effort et vous y êtes ! ⚡';
+    return "Chaque pas compte. Prenez soin de vous aujourd'hui ! 🌱";
+  }
+
+  logout(): void {
+    if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/authentification/patient';
+    }
+  }
+
 }
