@@ -251,13 +251,27 @@ async addMealWithAI(): Promise<void> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nom: this.newMeal.name,        // ← juste nom
-        quantite: this.newMeal.quantite // ← et quantite
+        nom: this.newMeal.name,        
+        quantite: this.newMeal.quantite
       })
     });
+      if (!response.ok) {
+      const errText = await response.text();
+      console.error('Erreur backend:', errText);
+      this.aiMessage = '❌ Erreur serveur. Réessayez.';
+      return;
+    }
 
     const data = await response.json();
-    const result = JSON.parse(data.result); // ← { calories, proteines }
+
+    console.log('AI raw response:', data); 
+
+  
+    if (!data.result) {
+      this.aiMessage = '❌ Réponse AI invalide.';
+      return;
+    }
+    const result = JSON.parse(data.result); 
 
     const meal: Meal = {
       name: this.newMeal.name!,
@@ -268,8 +282,8 @@ async addMealWithAI(): Promise<void> {
     };
 
     this.meals.push(meal);
-    this.calSuivi += result.calories;   // ← AJOUTE
-this.protSuivi += result.proteines; // ← AJOUTE
+    this.calSuivi += result.calories;  
+this.protSuivi += result.proteines; 
     this.suiviService.updateCalories(this.userId, result.calories).subscribe();
     this.suiviService.updateProteines(this.userId, result.proteines).subscribe();
     this.aiMessage = `🤖 Ajouté ! ${result.calories} kcal et ${result.proteines}g de protéines enregistrés ✅`;

@@ -39,7 +39,7 @@ export class Authentification implements OnInit {
   this.loading  = true;
   this.errorMsg = '';
 
-  this.authService.login({ email: this.email, pwd: this.pwd, role: this.role.toUpperCase() }).subscribe({
+  this.authService.login({ email: this.email, pwd: this.pwd }).subscribe({
     next: (res) => {
       this.loading = false;
       const userId = res.userId || this.authService.getUserId();
