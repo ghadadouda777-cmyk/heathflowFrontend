@@ -24,9 +24,10 @@ export class AuthService {
         if (response.nom)    localStorage.setItem('nom',    response.nom);
         if (response.prenom) localStorage.setItem('prenom', response.prenom);
         if (response.email)  localStorage.setItem('email',  response.email);
+        localStorage.setItem('isActive', String(response.isActive));
 
 
-        // ✅ FIX : sauvegarde l'ID spécifique selon le rôle
+        
         if (response.role === 'NUTRITIONIST' && response.nutritionnisteId) {
           localStorage.setItem('userId', response.nutritionnisteId);
         } else if (response.role === 'BLOOMER' && response.bloomerId) {

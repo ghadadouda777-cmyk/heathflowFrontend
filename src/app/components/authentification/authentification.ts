@@ -30,38 +30,44 @@ export class Authentification implements OnInit {
     }
   }
 
-  login() {
-    if (!this.email || !this.pwd) {
-      this.errorMsg = 'Veuillez remplir tous les champs.';
-      return;
-    }
-
-    this.loading  = true;
-    this.errorMsg = '';
-
-    this.authService.login({ email: this.email, pwd: this.pwd, role: this.role.toUpperCase() }).subscribe({
-      next: (res) => {
-        this.loading = false;
-        const userId = this.authService.getUserId();
-        const serverRole = (res.role || this.role).toLowerCase();
-        
-        console.log('✅ Login OK — role =', serverRole, 'userId =', userId);
-
-        if (serverRole === 'nutritionist') {
-          this.router.navigate(['/dashboard/nutritionist']);
-        } else if (serverRole === 'coach') {
-          this.router.navigate(['/dashboard/coach']);
-        } else {
-          // Bloomer or Patient
-          this.router.navigate(['/dashboard/patient', userId]);
-        }
-      },
-   error: (err) => {
-  this.loading = false;
-  // ← affiche le vrai message du backend
-  this.errorMsg = err.error?.error || 'Email ou mot de passe incorrect.';
-  console.error(err);
-}
-    });
+ login() {
+  if (!this.email || !this.pwd) {
+    this.errorMsg = 'Veuillez remplir tous les champs.';
+    return;
   }
+
+  this.loading  = true;
+  this.errorMsg = '';
+
+  this.authService.login({ email: this.email, pwd: this.pwd, role: this.role.toUpperCase() }).subscribe({
+    next: (res) => {
+      this.loading = false;
+      const userId = res.userId || this.authService.getUserId();
+      const serverRole = (res.role || this.role).toLowerCase();
+
+      console.log('Login OK — role =', serverRole, 'userId =', userId, 'isActive =', res.isActive);
+
+      if (serverRole === 'nutritionist') {
+        this.router.navigate(['/dashboard/nutritionist']);
+
+      } else if (serverRole === 'coach') {
+        this.router.navigate(['/dashboard/coach']);
+
+      } else if (serverRole === 'bloomer') {
+       
+        if (res.isActive === true || res.isActive === 'true') {
+          this.router.navigate(['/dashboard/patient', userId]);
+        } else {
+          this.router.navigate(['/dashboard/bloomer', userId]);
+        }
+
+      } 
+    },
+    error: (err) => {
+      this.loading = false;
+      this.errorMsg = err.error?.error || 'Email ou mot de passe incorrect.';
+      console.error(err);
+    }
+  });
+}
 }
